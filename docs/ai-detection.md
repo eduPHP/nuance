@@ -97,10 +97,11 @@ TTR (Type-Token Ratio) = unique_words / total_words
 
 **Error message**: "Text too short for analysis (minimum 50 words)"
 
-### Maximum Word Count (Free Tier)
+### Maximum Word Count (Tier-Based)
 
 **Free tier**: 800 words maximum per analysis  
-**Pro tier**: Unlimited
+**Pro tier**: 10,000 words maximum per analysis  
+**Team tier**: 10,000 words maximum per analysis
 
 **Reason**: Tier differentiation to encourage Pro upgrades while still providing valuable free tier functionality.
 
@@ -108,9 +109,24 @@ TTR (Type-Token Ratio) = unique_words / total_words
 - Word count checked before queuing analysis job
 - Validation occurs in `TierLimitService::checkAnalysisWordLimit()`
 - Uses PHP's `str_word_count()` function
-- Pro tier users have `analysis_word_limit = NULL` (unlimited)
+- Limits stored in `subscriptions.analysis_word_limit` column
 
-**Error message**: "Text exceeds the 800-word limit for free tier analysis. Your text contains {count} words. Upgrade to Pro for unlimited analysis."
+**Error messages**:
+- Free tier: "Text exceeds the 800-word limit for free tier analysis. Your text contains {count} words. Upgrade to Pro for unlimited analysis."
+- Pro/Team tier: "Text exceeds the 10,000-word limit. Please split your document into smaller sections."
+
+### Daily Analysis Limits
+
+**Free tier**: 5 analyses per day  
+**Pro tier**: Unlimited analyses  
+**Team tier**: Unlimited analyses
+
+**Implementation**:
+- Daily usage tracked in `subscriptions.analyses_used_today`
+- Resets at midnight based on `subscriptions.analysis_reset_at`
+- Validation occurs in `TierLimitService::checkDailyAnalysisLimit()`
+
+**Error message**: "You've reached your daily limit of 5 analyses. Upgrade to Pro for unlimited analyses or try again tomorrow."
 
 ## Combined Scoring Algorithm
 
@@ -178,6 +194,22 @@ Identify specific parts of text that are most likely AI-generated:
 ]
 ```
 
+## Accuracy Tiers
+
+### Standard Accuracy (Free Tier)
+
+- Basic mathematical analysis
+- Single-pass detection
+- Core metrics only (perplexity, burstiness, diversity)
+
+### Premium Accuracy (Pro/Team Tiers)
+
+- Enhanced mathematical analysis
+- Multi-pass detection with refinement
+- Additional metrics (phrase patterns, stylometry)
+- More granular critical section detection
+- Lower false-positive rate
+
 ## Sample Validation
 
 When users upload writing samples, we validate they're human-written:
@@ -216,6 +248,17 @@ Mark as valid, allow use for rewriting
 - Index `detection_results.ai_confidence` for filtering
 - Index `samples.is_valid` for quick valid sample lookup
 
+## Error Handling
+
+- **Empty text**: Return error "Text too short for analysis (minimum 50 words)"
+- **Text too short**: Return error if word count < 50 words
+- **Text too long (free tier)**: Return error if word count > 800 words with upgrade prompt
+- **Text too long (pro/team tier)**: Return error if word count > 10,000 words
+- **Daily limit exceeded (free tier)**: Return error with upgrade prompt
+- **Very long text**: Queue for async processing
+- **Invalid characters**: Sanitize before analysis
+- **Analysis failure**: Return default confidence of 50% with error flag
+
 ## Future Enhancements
 
 ### Phase 2: ML Model Integration
@@ -229,67 +272,7 @@ Mark as valid, allow use for rewriting
 - Detect GPT-specific phrases
 - Identify model-specific writing styles
 
-## Testing Strategy
-
-### Unit Tests
-```php
-test('calculates perplexity correctly', function () {
-    $text = "The quick brown fox jumps over the lazy dog.";
-    $score = $this->analyzer->calculatePerplexity($text);
-    expect($score)->toBeFloat()->toBeGreaterThan(0);
-});
-
-test('detects high AI confidence for predictable text', function () {
-    $aiText = "In conclusion, it is important to note that...";
-    $result = $this->service->analyze($aiText);
-    expect($result->aiConfidence)->toBeGreaterThan(70);
-});
-```
-
-### Integration Tests
-```php
-test('marks sample as invalid if AI confidence is high', function () {
-    $sample = Sample::factory()->create([
-        'content' => 'Very predictable AI-generated text...'
-    ]);
-    
-    $this->sampleService->validate($sample);
-    
-    expect($sample->fresh()->is_valid)->toBeFalse();
-});
-```
-
-## API Response Format
-
-```json
-{
-  "ai_confidence": 85.3,
-  "perplexity_score": 125.7,
-  "burstiness_score": 0.18,
-  "diversity_score": 0.35,
-  "interpretation": "High likelihood of AI generation",
-  "critical_sections": [
-    {
-      "start": 0,
-      "end": 150,
-      "confidence": 92.5,
-      "reason": "Low perplexity and repetitive structure"
-    }
-  ],
-  "metadata": {
-    "word_count": 450,
-    "sentence_count": 18,
-    "avg_sentence_length": 25,
-    "analysis_time_ms": 45
-  }
-}
-```
-
-## Error Handling
-
-- **Empty text**: Return error "Text too short for analysis (minimum 50 words)"
-- **Text too short**: Return error if word count < 50 words
-- **Text too long (free tier)**: Return error if word count > 800 words with upgrade prompt
-- **Very long text**: Queue for async processing
-- **Invalid characters**: Sanitize before analysis
-- **Analysis failure**: Return default confidence of 50% with error flag
+### Phase 4: Syntactic Heatmap
+- Visual gradient-based highlighting
+- Color-coded by AI probability (Red/Yellow/Green)
+- Interactive tooltips explaining detection reasons

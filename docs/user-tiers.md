@@ -156,9 +156,7 @@ Laravel Policies provide a clean way to organize authorization logic around mode
 ```php
 namespace App\Policies;
 
-use App\Models\{User, Document}o]
- ø→ĸo
- øºþ    ;
+use App\Models\{User, Document};
 
 class DocumentPolicy
 {

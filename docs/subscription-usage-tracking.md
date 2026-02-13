@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Humanizer app tracks usage limits and consumption at the subscription level with automatic monthly resets. This provides flexible tier management and accurate usage metering.
+The Humanizer app tracks usage limits and consumption at the subscription level with automatic monthly and daily resets. This provides flexible tier management and accurate usage metering across three tiers: Free, Pro, and Team.
 
 ## How It Works
 
@@ -12,16 +12,25 @@ Each user has a `subscription` record that contains:
 
 ```sql
 -- Usage limits (set based on tier)
-document_limit INT NULL           -- NULL = unlimited (Pro)
-rewrite_limit_monthly INT         -- 0 for free, 50 for pro
-analysis_word_limit INT NULL      -- 800 for free, NULL = unlimited (Pro)
+document_limit INT NULL           -- NULL = unlimited (Pro/Team)
+rewrite_limit_monthly INT         -- 0 for free, 50 for pro, unlimited for team
+analysis_word_limit INT NULL      -- 800 for free, 10000 for pro/team
+daily_analysis_limit INT NULL     -- 5 for free, NULL = unlimited (Pro/Team)
 
 -- Current usage (resets monthly)
 documents_used INT                -- Total documents created
 rewrites_used_this_month INT      -- Rewrites in current billing period
 
+-- Current usage (resets daily)
+analyses_used_today INT           -- Analyses performed today
+
 -- Reset tracking
-usage_reset_at TIMESTAMP          -- When counters were last reset
+usage_reset_at TIMESTAMP          -- When monthly counters were last reset
+analysis_reset_at TIMESTAMP       -- When daily analysis counter was last reset
+
+-- Tier features
+accuracy_tier VARCHAR(50)         -- 'standard' or 'premium'
+team_member_limit INT             -- 1 for free/pro, 5 for team
 ```
 
 ### Monthly Reset Logic
@@ -45,45 +54,96 @@ public function resetUsageIfNeeded(): void
 - Automatically checked before incrementing usage
 - Resets occur exactly 1 month after `usage_reset_at`
 
+### Daily Reset Logic
+
+The system automatically resets daily analysis counters:
+
+```php
+public function resetDailyAnalysisIfNeeded(): void
+{
+    if ($this->analysis_reset_at->addDay()->isPast()) {
+        $this->update([
+            'analyses_used_today' => 0,
+            'analysis_reset_at' => now()->startOfDay(),
+        ]);
+    }
+}
+```
+
+**When resets happen**:
+- Automatically checked before each analysis
+- Resets at midnight (start of day)
+
 ### Tier Configuration
 
 **Free Tier**:
 ```php
-document_limit: 10
-rewrite_limit_monthly: 0
-analysis_word_limit: 800
+[
+    'tier' => 'free',
+    'price' => 0,
+    'document_limit' => 10,
+    'analysis_word_limit' => 800,
+    'daily_analysis_limit' => 5,
+    'rewrite_limit_monthly' => 0,
+    'accuracy_tier' => 'standard',
+    'team_member_limit' => 1,
+]
 ```
 
 **Pro Tier**:
 ```php
-document_limit: null  // Unlimited
-rewrite_limit_monthly: 50
-analysis_word_limit: null  // Unlimited
+[
+    'tier' => 'pro',
+    'price' => 12,
+    'document_limit' => null,        // Unlimited
+    'analysis_word_limit' => 10000,
+    'daily_analysis_limit' => null,  // Unlimited
+    'rewrite_limit_monthly' => 50,
+    'accuracy_tier' => 'premium',
+    'team_member_limit' => 1,
+]
+```
+
+**Team Tier**:
+```php
+[
+    'tier' => 'team',
+    'price' => 39,
+    'document_limit' => null,        // Unlimited
+    'analysis_word_limit' => 10000,
+    'daily_analysis_limit' => null,  // Unlimited
+    'rewrite_limit_monthly' => null, // Unlimited
+    'accuracy_tier' => 'premium',
+    'team_member_limit' => 5,
+]
 ```
 
 ## Usage Flow
 
-### Document Creation
+### Document Creation & Analysis
 
 ```php
-// 1. Check document limit
+// 1. Check daily analysis limit
+$tierLimitService->checkDailyAnalysisLimit($user);
+
+// 2. Check document limit
 $tierLimitService->checkDocumentLimit($user);
 
-// 2. Check word count limit (for analysis)
+// 3. Check word count limit (for analysis)
 $tierLimitService->checkAnalysisWordLimit($user, $content);
 
-// 3. Create document
+// 4. Create document
 $document = Document::create([...]);
 
-// 4. Track usage
+// 5. Track usage
 $tierLimitService->trackDocumentCreation($user);
-// Internally: $subscription->incrementDocumentUsage()
+$tierLimitService->trackAnalysisUsage($user);
 ```
 
 ### Rewrite Request
 
 ```php
-// 1. Check access (Pro tier required)
+// 1. Check access (Pro/Team tier required)
 $tierLimitService->checkRewriteAccess($user);
 
 // 2. Check monthly limit
@@ -107,27 +167,55 @@ $tierLimitService->trackRewriteUsage($user);
 $remaining = $tierLimitService->getRemainingDocuments($user);
 // Returns: int (e.g., 7) or null (unlimited)
 
+// Daily analyses (for free tier)
+$remaining = $tierLimitService->getRemainingAnalysesToday($user);
+// Returns: int (e.g., 3) or null (unlimited)
+
 // Rewrites (for pro tier)
 $remaining = $tierLimitService->getRemainingRewrites($user);
-// Returns: int (e.g., 35)
+// Returns: int (e.g., 35) or null (unlimited)
 ```
 
-### Show Reset Date
+### Show Reset Dates
 
 ```php
 $subscription = $user->subscription;
-$resetDate = $subscription->usage_reset_at->addMonth()->format('M d, Y');
+
+// Monthly reset
+$monthlyResetDate = $subscription->usage_reset_at->addMonth()->format('M d, Y');
 // Example: "Mar 13, 2026"
+
+// Daily reset
+$dailyResetTime = $subscription->analysis_reset_at->addDay()->format('h:i A');
+// Example: "12:00 AM"
 ```
 
 ### UI Example
 
 ```blade
+{{-- Daily Analysis Usage (Free Tier) --}}
+<div class="stat">
+    <div class="stat-title">Analyses Today</div>
+    <div class="stat-value">
+        {{ $subscription->analyses_used_today }} / 
+        {{ $subscription->daily_analysis_limit ?? '∞' }}
+    </div>
+    <div class="stat-desc">
+        Resets at midnight
+    </div>
+    <progress 
+        class="progress progress-primary" 
+        value="{{ $subscription->analyses_used_today }}" 
+        max="{{ $subscription->daily_analysis_limit ?? 100 }}"
+    ></progress>
+</div>
+
+{{-- Monthly Rewrite Usage (Pro Tier) --}}
 <div class="stat">
     <div class="stat-title">Rewrites This Month</div>
     <div class="stat-value">
         {{ $subscription->rewrites_used_this_month }} / 
-        {{ $subscription->rewrite_limit_monthly }}
+        {{ $subscription->rewrite_limit_monthly ?? '∞' }}
     </div>
     <div class="stat-desc">
         Resets {{ $subscription->usage_reset_at->addMonth()->format('M d, Y') }}
@@ -135,7 +223,7 @@ $resetDate = $subscription->usage_reset_at->addMonth()->format('M d, Y');
     <progress 
         class="progress progress-primary" 
         value="{{ $subscription->rewrites_used_this_month }}" 
-        max="{{ $subscription->rewrite_limit_monthly }}"
+        max="{{ $subscription->rewrite_limit_monthly ?? 100 }}"
     ></progress>
 </div>
 ```
@@ -147,13 +235,18 @@ When a user signs up or upgrades:
 ```php
 Subscription::create([
     'user_id' => $user->id,
-    'tier' => 'free', // or 'pro'
-    'document_limit' => 10, // or null for pro
-    'rewrite_limit_monthly' => 0, // or 50 for pro
-    'analysis_word_limit' => 800, // or null for pro
+    'tier' => 'free', // or 'pro' or 'team'
+    'document_limit' => 10, // or null for pro/team
+    'rewrite_limit_monthly' => 0, // 0 for free, 50 for pro, null for team
+    'analysis_word_limit' => 800, // 800 for free, 10000 for pro/team
+    'daily_analysis_limit' => 5, // 5 for free, null for pro/team
     'documents_used' => 0,
     'rewrites_used_this_month' => 0,
+    'analyses_used_today' => 0,
     'usage_reset_at' => now(), // Start of billing period
+    'analysis_reset_at' => now()->startOfDay(),
+    'accuracy_tier' => 'standard', // or 'premium'
+    'team_member_limit' => 1, // or 5 for team
     'starts_at' => now(),
     'ends_at' => null, // Active subscription
 ]);
@@ -168,7 +261,24 @@ $subscription->update([
     'tier' => 'pro',
     'document_limit' => null, // Unlimited
     'rewrite_limit_monthly' => 50,
-    'analysis_word_limit' => null, // Unlimited
+    'analysis_word_limit' => 10000,
+    'daily_analysis_limit' => null, // Unlimited
+    'accuracy_tier' => 'premium',
+    // Keep existing usage counts
+]);
+```
+
+### Upgrade to Team
+
+```php
+$subscription->update([
+    'tier' => 'team',
+    'document_limit' => null, // Unlimited
+    'rewrite_limit_monthly' => null, // Unlimited
+    'analysis_word_limit' => 10000,
+    'daily_analysis_limit' => null, // Unlimited
+    'accuracy_tier' => 'premium',
+    'team_member_limit' => 5,
     // Keep existing usage counts
 ]);
 ```
@@ -181,6 +291,9 @@ $subscription->update([
     'document_limit' => 10,
     'rewrite_limit_monthly' => 0,
     'analysis_word_limit' => 800,
+    'daily_analysis_limit' => 5,
+    'accuracy_tier' => 'standard',
+    'team_member_limit' => 1,
     // Keep existing usage counts
     // User may be over limit until next reset
 ]);
@@ -194,6 +307,7 @@ $subscription->update([
 4. **Audit Trail**: Historical usage data preserved
 5. **Automatic Resets**: No cron jobs needed, resets happen on-demand
 6. **Billing Integration**: Ready for Stripe/Paddle integration
+7. **Multi-tier Support**: Easily handles Free/Pro/Team distinctions
 
 ## Testing
 
@@ -210,6 +324,17 @@ test('subscription resets monthly usage automatically', function () {
     expect($subscription->fresh()->usage_reset_at)->toBeGreaterThan(now()->subMinute());
 });
 
+test('subscription resets daily analysis usage automatically', function () {
+    $subscription = Subscription::factory()->create([
+        'analyses_used_today' => 5,
+        'analysis_reset_at' => now()->subDay(),
+    ]);
+    
+    $subscription->resetDailyAnalysisIfNeeded();
+    
+    expect($subscription->fresh()->analyses_used_today)->toBe(0);
+});
+
 test('tracks document creation usage', function () {
     $user = User::factory()->create();
     $subscription = Subscription::factory()->for($user)->create([
@@ -219,6 +344,17 @@ test('tracks document creation usage', function () {
     $tierLimitService->trackDocumentCreation($user);
     
     expect($subscription->fresh()->documents_used)->toBe(6);
+});
+
+test('enforces daily analysis limit for free tier', function () {
+    $user = User::factory()->create(['tier' => 'free']);
+    $subscription = Subscription::factory()->for($user)->create([
+        'daily_analysis_limit' => 5,
+        'analyses_used_today' => 5,
+    ]);
+    
+    expect(fn() => $tierLimitService->checkDailyAnalysisLimit($user))
+        ->toThrow(TierLimitException::class);
 });
 
 test('enforces monthly rewrite limit', function () {
@@ -244,11 +380,21 @@ User::chunk(100, function ($users) {
         Subscription::create([
             'user_id' => $user->id,
             'tier' => $user->tier,
-            'document_limit' => $user->tier === 'pro' ? null : 10,
-            'rewrite_limit_monthly' => $user->tier === 'pro' ? 50 : 0,
+            'document_limit' => $user->tier === 'free' ? 10 : null,
+            'rewrite_limit_monthly' => match($user->tier) {
+                'free' => 0,
+                'pro' => 50,
+                'team' => null,
+            },
+            'analysis_word_limit' => $user->tier === 'free' ? 800 : 10000,
+            'daily_analysis_limit' => $user->tier === 'free' ? 5 : null,
             'documents_used' => $user->documents()->count(),
             'rewrites_used_this_month' => 0, // Start fresh
+            'analyses_used_today' => 0,
             'usage_reset_at' => now(),
+            'analysis_reset_at' => now()->startOfDay(),
+            'accuracy_tier' => $user->tier === 'free' ? 'standard' : 'premium',
+            'team_member_limit' => $user->tier === 'team' ? 5 : 1,
             'starts_at' => $user->created_at,
             'ends_at' => null,
         ]);
