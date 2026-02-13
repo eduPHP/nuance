@@ -170,28 +170,28 @@ The visual identity must visually represent the "Human + Machine" synthesis. Cur
 
 #### 6.1 Color Psychology: "Organic Tech"
 
-The palette should blend the **Trust** of blue (standard in SaaS security) with the **Humanity** of warm earth tones.
+The palette should blend **editorial warmth** with **analytical clarity**, using earthy neutrals and focused data accents.
 
-* **Primary Color: Deep Azure (`#0F4C81`)**
-* *Semiotics:* Intelligence, logic, depth, stability. Used for the "Verification" and "Data" elements of the UI.
-
-
-* **Secondary Color: Living Coral (`#FF6F61`)**
-* *Semiotics:* Biology, human warmth, energy, creativity. Used for the "Voice Profile" and "Personalization" actions.
+* **Primary Color: Ember Orange (`#E5742A`)**
+* *Semiotics:* Momentum, confidence, and human energy. Used for primary actions and key "Refine" moments in the UI.
 
 
-* **Neutral Base: Warm Clay (`#F5F5F0`)**
-* *Semiotics:* Paper, parchment, organic material. Used for the background to reduce eye strain and mimic a writing surface.
+* **Secondary Color: Sandstone (`#F4EAE1`)**
+* *Semiotics:* Calm editorial warmth and readability. Used for supporting surfaces and low-emphasis UI states.
 
 
-* **Data Accents: Electric Teal (`#00BFFF`) and Signal Amber (`#FFBF00`)**
-* *Semiotics:* Precision and Caution. Used in the heatmaps to indicate varying levels of AI probability.
+* **Neutral Base: Paper Warmth (`#FCF4EE`)**
+* *Semiotics:* A soft, human-first canvas that feels like paper rather than a sterile app shell. Used for app backgrounds.
 
 
+* **Data Accents: Analytical Teal (`#2A9D90`) and Signal Amber (`#E8C468`)**
+* *Semiotics:* Precision and caution. Used in charts and heatmaps to indicate varying levels of AI probability.
 
 
 
-**Usage Strategy:** The interface transitions from Blue (when analyzing) to Coral (when rewriting/personalizing), visually guiding the user from "Machine State" to "Human State."
+
+
+**Usage Strategy:** The interface anchors on warm neutrals, then uses Ember Orange for action and Teal/Amber for analytical feedback, visually balancing "editorial warmth" with "technical clarity."
 
 #### 6.2 Typography
 
@@ -357,7 +357,7 @@ A critical unsatisfied requirement in the market is fairness.  reveal that ESL w
 Research into SaaS design  suggests a move away from "Flat Design" toward "Data-Rich Interfaces."
 
 * **Bento Grids:** The dashboard should use a "Bento Box" layout (grid of modular widgets) to show different stats (Perplexity, Readability, Style Match) simultaneously.
-* **Dark Mode with Neon:** While the primary brand is Blue/Coral, the "Power User" interface should offer a high-contrast Dark Mode with neon accents (Cyber Lime or Electric Teal) to appeal to developers and SEOs who work late hours.
+* **Dark Mode with Neon:** While the primary brand is Warm-Neutral/Ember, the "Power User" interface should offer a high-contrast Dark Mode with neon accents (Cyber Lime or Analytical Teal) to appeal to developers and SEOs who work late hours.
 
 #### 15. Naming Generation Matrix
 
@@ -382,7 +382,7 @@ As major AI labs (OpenAI, Google) implement watermarking , purely statistical de
 | Feature | **Authos (Proposed)** | Winston AI | GPTZero | Undetectable.ai | HyperWrite |
 | --- | --- | --- | --- | --- | --- |
 | **Core Function** | Verification + Style Synthesis | Detection | Detection | Humanization (Bypass) | AI Writing Asst. |
-| **Visual Style** | Organic Tech (Blue/Coral) | Security (Blue/Gold) | Academic (Purple/Black) | Hacker (Neon/Dark) | SaaS Standard |
+| **Visual Style** | Organic Tech (Warm/Ember) | Security (Blue/Gold) | Academic (Purple/Black) | Hacker (Neon/Dark) | SaaS Standard |
 | **Detection Insight** | Syntactic Heatmaps + "Why" | Basic Highlighting | Sentence Highlighting | N/A | N/A |
 | **Rewriting Logic** | **User Sample Based (DNA)** | N/A | N/A | Generic Human Model | Style Mimicry |
 | **Target Audience** | Universal (Pro/Student/Ent) | Educators/SEOs | Educators | SEOs/Students | Writers |
@@ -395,7 +395,7 @@ As major AI labs (OpenAI, Google) implement watermarking , purely statistical de
 | **Name** | **Nuance** | "Nuance" is exactly what AI models often lack and what your tool restores. It positions the brand as a premium editorial tool rather than a sneaky "bypass" tool. |
 | **Primary Font** | **Fraunces** (Serif) | Human history, editorial craft, warmth. |
 | **UI Font** | **Inter** (Sans) | Clarity, data, neutrality, invisibility. |
-| **Color A** | **Deep Azure** `#0F4C81` | The Machine, Truth, Logic, Security. |
-| **Color B** | **Living Coral** `#FF6F61` | The Human, Biology, Creativity, DNA. |
+| **Color A** | **Ember Orange** `#E5742A` | Action, momentum, and human energy. |
+| **Color B** | **Sandstone** `#F4EAE1` | Calm readability, warmth, and balance. |
 | **Key Feature** | **Voice Vault** | The secure storage of personal identity. |
 | **Key Output** | **Process Certificate** | The proof of human effort. |
