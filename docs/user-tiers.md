@@ -138,19 +138,23 @@ class Subscription extends Model
 }
 ```
 
-### User Authorization Service
+### Authorization Policies
+
+Laravel Policies provide a clean way to organize authorization logic around models.
+
+#### Document Policy
 
 ```php
-namespace App\Modules\Analytics\Services;
+namespace App\Policies;
 
-use App\Models\User;
+use App\Models\{User, Document};
 
-class UserAuthorizationService
+class DocumentPolicy
 {
     /**
-     * Check if user can create documents
+     * Determine if user can create documents
      */
-    public function canCreateDocuments(User $user): bool
+    public function create(User $user): bool
     {
         $subscription = $user->subscription;
         
@@ -162,19 +166,54 @@ class UserAuthorizationService
     }
     
     /**
-     * Check if user can request rewrites
+     * Determine if user can view a document
      */
-    public function canRewrite(User $user): bool
+    public function view(User $user, Document $document): bool
+    {
+        return $user->id === $document->user_id;
+    }
+    
+    /**
+     * Determine if user can update a document
+     */
+    public function update(User $user, Document $document): bool
+    {
+        return $user->id === $document->user_id;
+    }
+    
+    /**
+     * Determine if user can delete a document
+     */
+    public function delete(User $user, Document $document): bool
+    {
+        return $user->id === $document->user_id;
+    }
+}
+```
+
+#### Rewrite Policy
+
+```php
+namespace App\Policies;
+
+use App\Models\{User, Rewrite};
+
+class RewritePolicy
+{
+    /**
+     * Determine if user can request rewrites (Pro tier only)
+     */
+    public function create(User $user): bool
     {
         return $user->isPro();
     }
     
     /**
-     * Check if user can request more rewrites this month
+     * Determine if user can request more rewrites this month
      */
-    public function canRewriteThisMonth(User $user): bool
+    public function createThisMonth(User $user): bool
     {
-        if (!$this->canRewrite($user)) {
+        if (!$user->isPro()) {
             return false;
         }
         
@@ -188,27 +227,80 @@ class UserAuthorizationService
     }
     
     /**
-     * Check if user can upload samples
+     * Determine if user can view a rewrite
      */
-    public function canUploadSamples(User $user): bool
+    public function view(User $user, Rewrite $rewrite): bool
+    {
+        return $user->id === $rewrite->document->user_id;
+    }
+    
+    /**
+     * Determine if user can view diff (Pro only)
+     */
+    public function viewDiff(User $user): bool
+    {
+        return $user->isPro();
+    }
+    
+    /**
+     * Determine if user can view rewrite history (Pro only)
+     */
+    public function viewHistory(User $user): bool
+    {
+        return $user->isPro();
+    }
+}
+```
+
+#### Sample Policy
+
+```php
+namespace App\Policies;
+
+use App\Models\{User, Sample};
+
+class SamplePolicy
+{
+    /**
+     * Determine if user can upload samples (max 6)
+     */
+    public function create(User $user): bool
     {
         return $user->samples()->count() < 6;
     }
     
     /**
-     * Check if user can access diff view
+     * Determine if user can delete a sample
      */
-    public function canViewDiff(User $user): bool
+    public function delete(User $user, Sample $sample): bool
     {
-        return $user->isPro();
+        return $user->id === $sample->user_id;
     }
-    
-    /**
-     * Check if user can access rewrite history
-     */
-    public function canViewRewriteHistory(User $user): bool
+}
+```
+
+#### Policy Registration
+
+Policies are auto-discovered by Laravel if they follow the naming convention. Alternatively, register them in `AuthServiceProvider`:
+
+```php
+namespace App\Providers;
+
+use App\Models\{Document, Rewrite, Sample};
+use App\Policies\{DocumentPolicy, RewritePolicy, SamplePolicy};
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+
+class AuthServiceProvider extends ServiceProvider
+{
+    protected $policies = [
+        Document::class => DocumentPolicy::class,
+        Rewrite::class => RewritePolicy::class,
+        Sample::class => SamplePolicy::class,
+    ];
+
+    public function boot(): void
     {
-        return $user->isPro();
+        // Policies are automatically registered
     }
 }
 ```
@@ -223,10 +315,6 @@ use App\Modules\Analytics\Exceptions\TierLimitException;
 
 class TierLimitService
 {
-    public function __construct(
-        private UserAuthorizationService $authService
-    ) {}
-    
     public function checkDocumentLimit(User $user): void
     {
         $subscription = $user->subscription;
@@ -245,7 +333,7 @@ class TierLimitService
 
     public function checkRewriteAccess(User $user): void
     {
-        if (!$this->authService->canRewrite($user)) {
+        if (!Gate::forUser($user)->allows('create', Rewrite::class)) {
             throw new TierLimitException(
                 'Text rewriting is only available on the Pro tier. ' .
                 'Upgrade to unlock this feature.'
@@ -365,7 +453,9 @@ Route::middleware(['auth'])->group(function () {
 ```php
 namespace App\Livewire\Documents;
 
-use App\Modules\Analytics\Services\{TierLimitService, UserAuthorizationService};
+use App\Models\Document;
+use App\Modules\Analytics\Services\TierLimitService;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 class CreateDocument extends Component
@@ -374,12 +464,14 @@ class CreateDocument extends Component
     public string $content = '';
 
     public function __construct(
-        private TierLimitService $tierLimitService,
-        private UserAuthorizationService $authService
+        private TierLimitService $tierLimitService
     ) {}
 
     public function submit(): void
     {
+        // Authorize using policy
+        Gate::authorize('create', Document::class);
+        
         try {
             // Check tier limits
             $this->tierLimitService->checkDocumentLimit(auth()->user());
@@ -415,7 +507,7 @@ class CreateDocument extends Component
         $user = auth()->user();
         
         return view('livewire.documents.create', [
-            'canCreate' => $this->authService->canCreateDocuments($user),
+            'canCreate' => Gate::forUser($user)->allows('create', Document::class),
             'remainingDocuments' => $this->tierLimitService->getRemainingDocuments($user),
         ]);
     }
@@ -427,7 +519,9 @@ class CreateDocument extends Component
 ```php
 namespace App\Livewire\Documents;
 
-use App\Modules\Analytics\Services\{TierLimitService, UserAuthorizationService};
+use App\Models\{Document, Rewrite};
+use App\Modules\Analytics\Services\TierLimitService;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 class RewriteButton extends Component
@@ -439,18 +533,16 @@ class RewriteButton extends Component
     public function mount(): void
     {
         $user = auth()->user();
-        $authService = app(UserAuthorizationService::class);
-        $tierService = app(TierLimitService::class);
         
-        // Check if user can rewrite at all
-        if (!$authService->canRewrite($user)) {
+        // Check if user can rewrite at all (Pro tier)
+        if (!Gate::forUser($user)->allows('create', Rewrite::class)) {
             $this->canRewrite = false;
             $this->limitMessage = 'Text rewriting is only available on the Pro tier.';
             return;
         }
         
         // Check if user can rewrite this month
-        if (!$authService->canRewriteThisMonth($user)) {
+        if (!Gate::forUser($user)->allows('createThisMonth', Rewrite::class)) {
             $this->canRewrite = false;
             $subscription = $user->subscription;
             $this->limitMessage = 'You have reached your monthly limit of ' . 

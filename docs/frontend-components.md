@@ -303,23 +303,25 @@ export default {
     @endif
     
     <!-- Rewrite Button (Pro Only) -->
-    @inject('authService', 'App\Modules\Analytics\Services\UserAuthorizationService')
-    
-    @if($authService->canRewrite(auth()->user()) && $aiConfidence > 50)
-        <livewire:documents.rewrite-button :document="$document" />
-    @elseif(auth()->user()->isFree() && $aiConfidence > 50)
-        <div class="card bg-linear-to-r from-primary to-secondary text-primary-content shadow-xl">
-            <div class="card-body">
-                <h3 class="card-title">Want to humanize this text?</h3>
-                <p>Upgrade to Pro to unlock AI-powered rewriting using your writing style.</p>
-                <div class="card-actions justify-end">
-                    <a href="{{ route('pricing') }}" class="btn btn-neutral">
-                        Upgrade to Pro
-                    </a>
+    @can('create', App\Models\Rewrite::class)
+        @if($aiConfidence > 50)
+            <livewire:documents.rewrite-button :document="$document" />
+        @endif
+    @else
+        @if($aiConfidence > 50)
+            <div class="card bg-linear-to-r from-primary to-secondary text-primary-content shadow-xl">
+                <div class="card-body">
+                    <h3 class="card-title">Want to humanize this text?</h3>
+                    <p>Upgrade to Pro to unlock AI-powered rewriting using your writing style.</p>
+                    <div class="card-actions justify-end">
+                        <a href="{{ route('pricing') }}" class="btn btn-neutral">
+                            Upgrade to Pro
+                        </a>
+                    </div>
                 </div>
             </div>
-        </div>
-    @endif
+        @endif
+    @endcan
 </div>
 ```
 

@@ -1,154 +1,198 @@
-# User Authorization Service
+# Laravel Policies for Authorization
 
 ## Overview
 
-The `UserAuthorizationService` is a dedicated service that handles all user permission checks. This follows the Single Responsibility Principle by keeping authorization logic separate from the User model.
+Laravel Policies provide an organized way to handle authorization logic around models. Instead of using a custom service, we use Laravel's built-in authorization system with Policies and the `Gate` facade.
 
-## Why Use a Service?
+## Why Policies Over Custom Service?
 
-**Before** (Anti-pattern):
+**Before** (Custom Service):
 ```php
-// User model becomes bloated with authorization logic
-class User extends Authenticatable
-{
-    public function canRewrite(): bool { ... }
-    public function canCreateDocuments(): bool { ... }
-    public function canUploadSamples(): bool { ... }
-    public function canViewDiff(): bool { ... }
-    // ... many more permission methods
-}
-```
-
-**After** (Better):
-```php
-// User model stays clean with only relationships and basic getters
-class User extends Authenticatable
-{
-    public function isFree(): bool { return $this->tier === 'free'; }
-    public function isPro(): bool { return $this->tier === 'pro'; }
-    // Relationships only
-}
-
-// Authorization logic in dedicated service
 class UserAuthorizationService
 {
-    public function canRewrite(User $user): bool { ... }
     public function canCreateDocuments(User $user): bool { ... }
-    // ... all permission checks
+    public function canRewrite(User $user): bool { ... }
+}
+
+// Usage
+if ($authService->canCreateDocuments($user)) { ... }
+```
+
+**After** (Laravel Policies):
+```php
+class DocumentPolicy
+{
+    public function create(User $user): bool { ... }
+}
+
+// Usage
+Gate::authorize('create', Document::class);
+// or
+@can('create', App\Models\Document::class)
+```
+
+**Benefits:**
+1. **Framework Integration**: Native Laravel feature with built-in helpers
+2. **Convention Over Configuration**: Auto-discovery, standard naming
+3. **Blade Directives**: `@can`, `@cannot`, `@canany` for clean templates
+4. **Middleware Support**: `can:create,App\Models\Document` in routes
+5. **Automatic Injection**: Policy methods receive model instances automatically
+6. **Better Testing**: Built-in testing helpers
+
+## Policy Structure
+
+### Document Policy
+
+```php
+namespace App\Policies;
+
+use App\Models\{User, Document};
+
+class DocumentPolicy
+{
+    /**
+     * Determine if user can create documents
+     */
+    public function create(User $user): bool
+    {
+        $subscription = $user->subscription;
+        
+        if (!$subscription) {
+            return false;
+        }
+        
+        return !$subscription->hasReachedDocumentLimit();
+    }
+    
+    /**
+     * Determine if user can view a document
+     */
+    public function view(User $user, Document $document): bool
+    {
+        return $user->id === $document->user_id;
+    }
+    
+    /**
+     * Determine if user can update a document
+     */
+    public function update(User $user, Document $document): bool
+    {
+        return $user->id === $document->user_id;
+    }
+    
+    /**
+     * Determine if user can delete a document
+     */
+    public function delete(User $user, Document $document): bool
+    {
+        return $user->id === $document->user_id;
+    }
 }
 ```
 
-## Benefits
-
-1. **Separation of Concerns**: User model handles data, service handles authorization
-2. **Testability**: Easy to mock and test authorization logic independently
-3. **Reusability**: Service can be injected anywhere (controllers, Livewire, jobs)
-4. **Maintainability**: All permission logic in one place
-5. **Flexibility**: Easy to add complex authorization rules without bloating the model
-
-## Service Methods
-
-### canCreateDocuments(User $user): bool
-
-Check if user can create more documents based on their subscription limit.
+### Rewrite Policy
 
 ```php
-$authService->canCreateDocuments($user);
-// Returns: true if under limit, false if at/over limit
+namespace App\Policies;
+
+use App\Models\{User, Rewrite};
+
+class RewritePolicy
+{
+    /**
+     * Determine if user can request rewrites (Pro tier only)
+     */
+    public function create(User $user): bool
+    {
+        return $user->isPro();
+    }
+    
+    /**
+     * Determine if user can request more rewrites this month
+     * Custom ability name for monthly limit check
+     */
+    public function createThisMonth(User $user): bool
+    {
+        if (!$user->isPro()) {
+            return false;
+        }
+        
+        $subscription = $user->subscription;
+        
+        if (!$subscription) {
+            return false;
+        }
+        
+        return !$subscription->hasReachedMonthlyRewriteLimit();
+    }
+    
+    /**
+     * Determine if user can view a rewrite
+     */
+    public function view(User $user, Rewrite $rewrite): bool
+    {
+        return $user->id === $rewrite->document->user_id;
+    }
+    
+    /**
+     * Determine if user can view diff (Pro only)
+     */
+    public function viewDiff(User $user): bool
+    {
+        return $user->isPro();
+    }
+    
+    /**
+     * Determine if user can view rewrite history (Pro only)
+     */
+    public function viewHistory(User $user): bool
+    {
+        return $user->isPro();
+    }
+}
 ```
 
-**Use in**:
-- Document creation forms
-- Conditional UI rendering
-- Middleware
-
-### canRewrite(User $user): bool
-
-Check if user has access to rewriting feature (Pro tier only).
+### Sample Policy
 
 ```php
-$authService->canRewrite($user);
-// Returns: true if Pro, false if Free
+namespace App\Policies;
+
+use App\Models\{User, Sample};
+
+class SamplePolicy
+{
+    /**
+     * Determine if user can upload samples (max 6)
+     */
+    public function create(User $user): bool
+    {
+        return $user->samples()->count() < 6;
+    }
+    
+    /**
+     * Determine if user can delete a sample
+     */
+    public function delete(User $user, Sample $sample): bool
+    {
+        return $user->id === $sample->user_id;
+    }
+}
 ```
-
-**Use in**:
-- Rewrite button visibility
-- Route middleware
-- Feature gates
-
-### canRewriteThisMonth(User $user): bool
-
-Check if user can request more rewrites this month (checks both tier and monthly limit).
-
-```php
-$authService->canRewriteThisMonth($user);
-// Returns: true if Pro and under monthly limit
-```
-
-**Use in**:
-- Rewrite button state
-- Before queuing rewrite jobs
-- Usage warnings
-
-### canUploadSamples(User $user): bool
-
-Check if user can upload more writing samples (max 6).
-
-```php
-$authService->canUploadSamples($user);
-// Returns: true if < 6 samples
-```
-
-**Use in**:
-- Sample upload forms
-- Sample management UI
-
-### canViewDiff(User $user): bool
-
-Check if user can access diff view (Pro tier only).
-
-```php
-$authService->canViewDiff($user);
-// Returns: true if Pro
-```
-
-**Use in**:
-- Diff view component
-- Navigation links
-
-### canViewRewriteHistory(User $user): bool
-
-Check if user can access rewrite history (Pro tier only).
-
-```php
-$authService->canViewRewriteHistory($user);
-// Returns: true if Pro
-```
-
-**Use in**:
-- History page access
-- Navigation menu
 
 ## Usage Examples
 
 ### In Controllers
 
 ```php
-use App\Modules\Analytics\Services\UserAuthorizationService;
+use App\Models\Document;
+use Illuminate\Support\Facades\Gate;
 
 class StoreDocumentController
 {
-    public function __construct(
-        private UserAuthorizationService $authService
-    ) {}
-    
     public function __invoke(StoreDocumentRequest $request): RedirectResponse
     {
-        if (!$this->authService->canCreateDocuments($request->user())) {
-            return redirect()
-                ->route('pricing')
-                ->with('error', 'Document limit reached. Upgrade to Pro.');
-        }
+        // Throws AuthorizationException if not authorized
+        Gate::authorize('create', Document::class);
         
         // Create document...
     }
@@ -158,18 +202,22 @@ class StoreDocumentController
 ### In Livewire Components
 
 ```php
-use App\Modules\Analytics\Services\UserAuthorizationService;
+use Illuminate\Support\Facades\Gate;
 
 class CreateDocument extends Component
 {
-    public function __construct(
-        private UserAuthorizationService $authService
-    ) {}
+    public function submit(): void
+    {
+        // Authorize first (throws exception if fails)
+        Gate::authorize('create', Document::class);
+        
+        // Proceed with creation...
+    }
     
     public function render()
     {
         return view('livewire.documents.create', [
-            'canCreate' => $this->authService->canCreateDocuments(auth()->user()),
+            'canCreate' => Gate::forUser(auth()->user())->allows('create', Document::class),
         ]);
     }
 }
@@ -178,129 +226,254 @@ class CreateDocument extends Component
 ### In Blade Templates
 
 ```blade
-@inject('authService', 'App\Modules\Analytics\Services\UserAuthorizationService')
+{{-- Check if user can create documents --}}
+@can('create', App\Models\Document::class)
+    <button wire:click="submit">Create Document</button>
+@else
+    <a href="{{ route('pricing') }}">Upgrade to create more documents</a>
+@endcan
 
-@if($authService->canRewrite(auth()->user()))
+{{-- Check if user can view/edit specific document --}}
+@can('update', $document)
+    <button wire:click="edit">Edit</button>
+@endcan
+
+{{-- Check if user can delete specific document --}}
+@can('delete', $document)
+    <button wire:click="delete">Delete</button>
+@endcan
+
+{{-- Check custom ability --}}
+@can('createThisMonth', App\Models\Rewrite::class)
     <button wire:click="rewrite">Rewrite Text</button>
 @else
-    <a href="{{ route('pricing') }}" class="btn btn-primary">
-        Upgrade to Rewrite
-    </a>
-@endif
+    <p>Monthly rewrite limit reached</p>
+@endcan
+
+{{-- Multiple abilities (any) --}}
+@canany(['update', 'delete'], $document)
+    <div class="actions">...</div>
+@endcanany
+
+{{-- Inverse check --}}
+@cannot('create', App\Models\Rewrite::class)
+    <div class="upgrade-banner">Upgrade to Pro for rewrites</div>
+@endcannot
 ```
 
-### In Middleware
+### In Routes (Middleware)
 
 ```php
-class EnsureCanRewrite
-{
-    public function __construct(
-        private UserAuthorizationService $authService
-    ) {}
+// routes/web.php
+
+Route::middleware(['auth'])->group(function () {
+    // Authorize document creation
+    Route::post('/documents', StoreDocumentController::class)
+        ->can('create', Document::class);
     
-    public function handle(Request $request, Closure $next)
+    // Authorize viewing specific document
+    Route::get('/documents/{document}', ShowDocumentController::class)
+        ->can('view', 'document');
+    
+    // Authorize rewrite creation
+    Route::post('/rewrites', StoreRewriteController::class)
+        ->can('create', Rewrite::class);
+});
+```
+
+### Checking in Services
+
+```php
+use Illuminate\Support\Facades\Gate;
+
+class TierLimitService
+{
+    public function checkRewriteAccess(User $user): void
     {
-        if (!$this->authService->canRewrite($request->user())) {
-            abort(403, 'This feature requires a Pro subscription.');
+        if (!Gate::forUser($user)->allows('create', Rewrite::class)) {
+            throw new TierLimitException(
+                'Text rewriting is only available on the Pro tier.'
+            );
         }
-        
-        return $next($request);
     }
 }
 ```
 
-## Relationship with TierLimitService
-
-**UserAuthorizationService**: Answers "Can the user do X?" (boolean checks)
-**TierLimitService**: Enforces limits and throws exceptions
+### Conditional Logic
 
 ```php
-// Authorization Service - Check permission
-if ($authService->canRewrite($user)) {
-    // Show rewrite button
+// Check without throwing exception
+if (Gate::allows('create', Document::class)) {
+    // User can create
 }
 
-// Tier Limit Service - Enforce limit (throws exception)
-try {
-    $tierLimitService->checkRewriteAccess($user);
-    // Proceed with rewrite
-} catch (TierLimitException $e) {
-    // Handle error
+if (Gate::denies('create', Document::class)) {
+    // User cannot create
+}
+
+// Check for specific user
+if (Gate::forUser($user)->allows('create', Document::class)) {
+    // Specific user can create
+}
+
+// Check custom ability
+if (Gate::allows('createThisMonth', Rewrite::class)) {
+    // User can create rewrite this month
 }
 ```
 
-**When to use which**:
-- Use `UserAuthorizationService` for **UI conditionals** and **soft checks**
-- Use `TierLimitService` for **enforcement** and **exception handling**
-
-## Testing
+## Testing Policies
 
 ```php
-use App\Modules\Analytics\Services\UserAuthorizationService;
+use App\Models\{User, Document};
+use App\Policies\DocumentPolicy;
 
-test('free user cannot rewrite', function () {
+test('free user can create documents if under limit', function () {
     $user = User::factory()->create(['tier' => 'free']);
-    $authService = app(UserAuthorizationService::class);
-    
-    expect($authService->canRewrite($user))->toBeFalse();
-});
-
-test('pro user can rewrite if under monthly limit', function () {
-    $user = User::factory()->create(['tier' => 'pro']);
     $subscription = Subscription::factory()->for($user)->create([
-        'rewrite_limit_monthly' => 50,
-        'rewrites_used_this_month' => 30,
+        'document_limit' => 10,
+        'documents_used' => 5,
     ]);
     
-    $authService = app(UserAuthorizationService::class);
+    $policy = new DocumentPolicy();
     
-    expect($authService->canRewriteThisMonth($user))->toBeTrue();
+    expect($policy->create($user))->toBeTrue();
 });
 
-test('pro user cannot rewrite if at monthly limit', function () {
-    $user = User::factory()->create(['tier' => 'pro']);
+test('free user cannot create documents if at limit', function () {
+    $user = User::factory()->create(['tier' => 'free']);
     $subscription = Subscription::factory()->for($user)->create([
-        'rewrite_limit_monthly' => 50,
-        'rewrites_used_this_month' => 50,
+        'document_limit' => 10,
+        'documents_used' => 10,
     ]);
     
-    $authService = app(UserAuthorizationService::class);
+    $policy = new DocumentPolicy();
     
-    expect($authService->canRewriteThisMonth($user))->toBeFalse();
+    expect($policy->create($user))->toBeFalse();
+});
+
+test('pro user can create rewrites', function () {
+    $user = User::factory()->create(['tier' => 'pro']);
+    
+    $policy = new RewritePolicy();
+    
+    expect($policy->create($user))->toBeTrue();
+});
+
+test('free user cannot create rewrites', function () {
+    $user = User::factory()->create(['tier' => 'free']);
+    
+    $policy = new RewritePolicy();
+    
+    expect($policy->create($user))->toBeFalse();
+});
+
+test('user can only view their own documents', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+    
+    $document = Document::factory()->for($user)->create();
+    
+    $policy = new DocumentPolicy();
+    
+    expect($policy->view($user, $document))->toBeTrue();
+    expect($policy->view($otherUser, $document))->toBeFalse();
 });
 ```
 
-## Service Registration
+## Policy Registration
 
-Register in `AppServiceProvider` or `HumanizerServiceProvider`:
+Policies are auto-discovered if they follow naming conventions:
+- `App\Policies\DocumentPolicy` for `App\Models\Document`
+- `App\Policies\RewritePolicy` for `App\Models\Rewrite`
+
+Manual registration (optional):
 
 ```php
 namespace App\Providers;
 
-use App\Modules\Analytics\Services\UserAuthorizationService;
-use Illuminate\Support\ServiceProvider;
+use App\Models\{Document, Rewrite, Sample};
+use App\Policies\{DocumentPolicy, RewritePolicy, SamplePolicy};
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
-class HumanizerServiceProvider extends ServiceProvider
+class AuthServiceProvider extends ServiceProvider
 {
-    public function register(): void
+    protected $policies = [
+        Document::class => DocumentPolicy::class,
+        Rewrite::class => RewritePolicy::class,
+        Sample::class => SamplePolicy::class,
+    ];
+
+    public function boot(): void
     {
-        $this->app->singleton(UserAuthorizationService::class);
+        // Policies are automatically registered
     }
 }
 ```
 
-## Adding New Permissions
+## Custom Abilities
 
-When adding new features that require authorization:
-
-1. Add method to `UserAuthorizationService`
-2. Write tests for the new permission
-3. Use in controllers/Livewire/Blade as needed
+For abilities that don't map to CRUD operations, use custom method names:
 
 ```php
-// Example: Adding API access check
-public function canAccessApi(User $user): bool
+class RewritePolicy
 {
-    return $user->isPro() && $user->api_enabled;
+    // Standard CRUD
+    public function create(User $user): bool { ... }
+    
+    // Custom abilities
+    public function createThisMonth(User $user): bool { ... }
+    public function viewDiff(User $user): bool { ... }
+    public function viewHistory(User $user): bool { ... }
 }
 ```
+
+Usage:
+```php
+Gate::authorize('createThisMonth', Rewrite::class);
+
+@can('viewDiff', App\Models\Rewrite::class)
+    <div class="diff-viewer">...</div>
+@endcan
+```
+
+## Response Messages
+
+Customize authorization failure messages:
+
+```php
+use Illuminate\Auth\Access\Response;
+
+class DocumentPolicy
+{
+    public function create(User $user): Response
+    {
+        $subscription = $user->subscription;
+        
+        if (!$subscription) {
+            return Response::deny('No active subscription found.');
+        }
+        
+        if ($subscription->hasReachedDocumentLimit()) {
+            return Response::deny(
+                'Document limit reached. ' .
+                'You have created ' . $subscription->documents_used . ' of ' . 
+                $subscription->document_limit . ' documents.'
+            );
+        }
+        
+        return Response::allow();
+    }
+}
+```
+
+## Best Practices
+
+1. **Keep Policies Focused**: One policy per model
+2. **Use Standard Names**: `view`, `create`, `update`, `delete` for CRUD
+3. **Custom Abilities**: Use descriptive names like `createThisMonth`, `viewDiff`
+4. **Return Booleans**: For simple checks, return `true`/`false`
+5. **Return Responses**: For custom messages, return `Response::allow()` or `Response::deny()`
+6. **Test Thoroughly**: Write tests for all policy methods
+7. **Use in Blade**: Leverage `@can` directives for clean templates
+8. **Middleware**: Use `can:` middleware for route protection
