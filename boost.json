@@ -1,0 +1,22 @@
+{
+    "agents": [
+        "codex",
+        "opencode",
+        "claude_code",
+        "gemini"
+    ],
+    "guidelines": true,
+    "herd_mcp": false,
+    "mcp": true,
+    "packages": [
+        "filament/filament",
+        "laravel/ai"
+    ],
+    "sail": false,
+    "skills": [
+        "livewire-development",
+        "pest-testing",
+        "tailwindcss-development",
+        "developing-with-ai-sdk"
+    ]
+}
