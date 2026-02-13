@@ -170,7 +170,7 @@ class DocumentPolicy
      */
     public function view(User $user, Document $document): bool
     {
-        return $user->id === $document->user_id;
+        return $user->is($document->user);
     }
     
     /**
@@ -178,7 +178,7 @@ class DocumentPolicy
      */
     public function update(User $user, Document $document): bool
     {
-        return $user->id === $document->user_id;
+        return $user->is($document->user);
     }
     
     /**
@@ -186,7 +186,7 @@ class DocumentPolicy
      */
     public function delete(User $user, Document $document): bool
     {
-        return $user->id === $document->user_id;
+        return $user->is($document->user);
     }
 }
 ```
@@ -231,7 +231,7 @@ class RewritePolicy
      */
     public function view(User $user, Rewrite $rewrite): bool
     {
-        return $user->id === $rewrite->document->user_id;
+        return $user->is($rewrite->document->user);
     }
     
     /**
@@ -274,7 +274,7 @@ class SamplePolicy
      */
     public function delete(User $user, Sample $sample): bool
     {
-        return $user->id === $sample->user_id;
+        return $user->is($sample->user);
     }
 }
 ```
