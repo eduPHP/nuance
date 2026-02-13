@@ -18,6 +18,7 @@
 ## Frontend
 
 - **[frontend-components.md](./frontend-components.md)** - DaisyUI component library and UI patterns
+- **[style-guide.md](./style-guide.md)** - Visual tokens, layout rhythm, and reusable landing page patterns
 
 ## Quick Start
 

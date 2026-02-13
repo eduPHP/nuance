@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-@import '../../vendor/livewire/flux/dist/flux.css';
 
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -23,27 +22,66 @@
     --color-zinc-900: #171717;
     --color-zinc-950: #0a0a0a;
 
-    --color-accent: var(--color-neutral-800);
-    --color-accent-content: var(--color-neutral-800);
-    --color-accent-foreground: var(--color-white);
+    --color-accent: #f6e9dd;
+    --color-accent-content: #d36f1f;
+    --color-accent-foreground: #d36f1f;
+
+    /* Semantic tokens for app-wide UI primitives */
+    --color-background: #f6f0eb;
+    --color-foreground: #2f2523;
+    --color-card: #faf7f4;
+    --color-card-foreground: #2f2523;
+    --color-popover: #faf7f4;
+    --color-popover-foreground: #2f2523;
+    --color-primary: #e8842c;
+    --color-primary-foreground: var(--color-white);
+    --color-secondary: #ede4dd;
+    --color-secondary-foreground: #2f2523;
+    --color-muted: #efe7e1;
+    --color-muted-foreground: #7d6f68;
+    --color-destructive: #dc2626;
+    --color-destructive-foreground: var(--color-white);
+    --color-border: #e1d6cf;
+    --color-input: #e1d6cf;
+    --color-ring: #e8842c;
 }
 
 @layer theme {
     .dark {
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
+        --color-accent: #3a2d28;
+        --color-accent-content: #f2c6a4;
+        --color-accent-foreground: #f2c6a4;
+        --color-background: #171210;
+        --color-foreground: #f2e9e3;
+        --color-card: #211a17;
+        --color-card-foreground: #f2e9e3;
+        --color-popover: #211a17;
+        --color-popover-foreground: #f2e9e3;
+        --color-primary: #fb923c;
+        --color-primary-foreground: var(--color-zinc-950);
+        --color-secondary: #2a211d;
+        --color-secondary-foreground: #f2e9e3;
+        --color-muted: #2a211d;
+        --color-muted-foreground: #b8a8a0;
+        --color-destructive: #ef4444;
+        --color-destructive-foreground: var(--color-white);
+        --color-border: #362b26;
+        --color-input: #362b26;
+        --color-ring: #fb923c;
     }
 }
 
 @layer base {
-
     *,
     ::after,
     ::before,
     ::backdrop,
     ::file-selector-button {
-        border-color: var(--color-gray-200, currentColor);
+        border-color: var(--color-border, currentColor);
+    }
+
+    body {
+        @apply bg-background text-foreground;
     }
 }
 
@@ -64,3 +102,9 @@ select:focus[data-flux-control] {
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */
+
+@layer utilities {
+    .text-balance {
+        text-wrap: balance;
+    }
+}
