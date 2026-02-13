@@ -87,6 +87,31 @@ TTR (Type-Token Ratio) = unique_words / total_words
 - TTR 0.4-0.6: Mixed
 - TTR < 0.4: Likely AI
 
+## Word Count Limits
+
+### Minimum Word Count
+
+**All tiers**: 50 words minimum required for analysis
+
+**Reason**: Statistical analysis requires sufficient text to be accurate. Very short texts don't provide enough data for reliable perplexity, burstiness, and diversity calculations.
+
+**Error message**: "Text too short for analysis (minimum 50 words)"
+
+### Maximum Word Count (Free Tier)
+
+**Free tier**: 800 words maximum per analysis  
+**Pro tier**: Unlimited
+
+**Reason**: Tier differentiation to encourage Pro upgrades while still providing valuable free tier functionality.
+
+**Implementation**:
+- Word count checked before queuing analysis job
+- Validation occurs in `TierLimitService::checkAnalysisWordLimit()`
+- Uses PHP's `str_word_count()` function
+- Pro tier users have `analysis_word_limit = NULL` (unlimited)
+
+**Error message**: "Text exceeds the 800-word limit for free tier analysis. Your text contains {count} words. Upgrade to Pro for unlimited analysis."
+
 ## Combined Scoring Algorithm
 
 ```php
@@ -263,6 +288,8 @@ test('marks sample as invalid if AI confidence is high', function () {
 ## Error Handling
 
 - **Empty text**: Return error "Text too short for analysis (minimum 50 words)"
+- **Text too short**: Return error if word count < 50 words
+- **Text too long (free tier)**: Return error if word count > 800 words with upgrade prompt
 - **Very long text**: Queue for async processing
 - **Invalid characters**: Sanitize before analysis
 - **Analysis failure**: Return default confidence of 50% with error flag

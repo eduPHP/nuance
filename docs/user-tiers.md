@@ -9,6 +9,7 @@ The Humanizer app has two tiers: **Free** and **Pro**. Free tier provides AI det
 | Feature | Free Tier | Pro Tier |
 |---------|-----------|----------|
 | **AI Detection** | ✅ Unlimited | ✅ Unlimited |
+| **Analysis Word Limit** | ⚠️ 800 words | ✅ Unlimited |
 | **Critical Section Highlighting** | ✅ Yes | ✅ Yes |
 | **Document Storage** | ✅ 10 documents | ✅ Unlimited |
 | **Writing Samples** | ✅ Up to 6 | ✅ Up to 6 |
@@ -125,6 +126,16 @@ class Subscription extends Model
         return $this->rewrites_used_this_month >= $this->rewrite_limit_monthly;
     }
     
+    public function getAnalysisWordLimit(): ?int
+    {
+        return $this->analysis_word_limit;
+    }
+    
+    public function hasAnalysisWordLimit(): bool
+    {
+        return $this->analysis_word_limit !== null;
+    }
+    
     public function incrementDocumentUsage(): void
     {
         $this->increment('documents_used');
@@ -133,9 +144,7 @@ class Subscription extends Model
     public function incrementRewriteUsage(): void
     {
         $this->resetUsageIfNeeded();
-        $this->increment('rewrites_used_this_month');
-    }
-}
+    }}
 ```
 
 ### Authorization Policies
@@ -147,7 +156,9 @@ Laravel Policies provide a clean way to organize authorization logic around mode
 ```php
 namespace App\Policies;
 
-use App\Models\{User, Document};
+use App\Models\{User, Document}o]
+ ø→ĸo
+ øºþ    ;
 
 class DocumentPolicy
 {
@@ -331,6 +342,31 @@ class TierLimitService
         }
     }
 
+    public function checkAnalysisWordLimit(User $user, string $content): void
+    {
+        $subscription = $user->subscription;
+        
+        if (!$subscription) {
+            throw new TierLimitException('No active subscription found.');
+        }
+        
+        // Pro tier has no word limit
+        if (!$subscription->hasAnalysisWordLimit()) {
+            return;
+        }
+        
+        $wordCount = str_word_count($content);
+        $limit = $subscription->getAnalysisWordLimit();
+        
+        if ($wordCount > $limit) {
+            throw new TierLimitException(
+                "Text exceeds the {$limit}-word limit for free tier analysis. " .
+                "Your text contains {$wordCount} words. " .
+                "Upgrade to Pro for unlimited analysis."
+            );
+        }
+    }
+
     public function checkRewriteAccess(User $user): void
     {
         if (!Gate::forUser($user)->allows('create', Rewrite::class)) {
@@ -384,6 +420,17 @@ class TierLimitService
         }
 
         return max(0, $subscription->document_limit - $subscription->documents_used);
+    }
+    
+    public function getAnalysisWordLimit(User $user): ?int
+    {
+        $subscription = $user->subscription;
+        
+        if (!$subscription) {
+            return null;
+        }
+        
+        return $subscription->getAnalysisWordLimit();
     }
     
     public function trackDocumentCreation(User $user): void
@@ -476,6 +523,9 @@ class CreateDocument extends Component
             // Check tier limits
             $this->tierLimitService->checkDocumentLimit(auth()->user());
             
+            // Check word count limit for analysis
+            $this->tierLimitService->checkAnalysisWordLimit(auth()->user(), $this->content);
+            
             // Validate
             $this->validate([
                 'title' => 'required|max:255',
@@ -509,6 +559,8 @@ class CreateDocument extends Component
         return view('livewire.documents.create', [
             'canCreate' => Gate::forUser($user)->allows('create', Document::class),
             'remainingDocuments' => $this->tierLimitService->getRemainingDocuments($user),
+            'analysisWordLimit' => $this->tierLimitService->getAnalysisWordLimit($user),
+            'currentWordCount' => str_word_count($this->content),
         ]);
     }
 }

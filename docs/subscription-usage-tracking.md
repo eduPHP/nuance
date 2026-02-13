@@ -14,6 +14,7 @@ Each user has a `subscription` record that contains:
 -- Usage limits (set based on tier)
 document_limit INT NULL           -- NULL = unlimited (Pro)
 rewrite_limit_monthly INT         -- 0 for free, 50 for pro
+analysis_word_limit INT NULL      -- 800 for free, NULL = unlimited (Pro)
 
 -- Current usage (resets monthly)
 documents_used INT                -- Total documents created
@@ -50,12 +51,14 @@ public function resetUsageIfNeeded(): void
 ```php
 document_limit: 10
 rewrite_limit_monthly: 0
+analysis_word_limit: 800
 ```
 
 **Pro Tier**:
 ```php
 document_limit: null  // Unlimited
 rewrite_limit_monthly: 50
+analysis_word_limit: null  // Unlimited
 ```
 
 ## Usage Flow
@@ -63,13 +66,16 @@ rewrite_limit_monthly: 50
 ### Document Creation
 
 ```php
-// 1. Check limit
+// 1. Check document limit
 $tierLimitService->checkDocumentLimit($user);
 
-// 2. Create document
+// 2. Check word count limit (for analysis)
+$tierLimitService->checkAnalysisWordLimit($user, $content);
+
+// 3. Create document
 $document = Document::create([...]);
 
-// 3. Track usage
+// 4. Track usage
 $tierLimitService->trackDocumentCreation($user);
 // Internally: $subscription->incrementDocumentUsage()
 ```
@@ -144,6 +150,7 @@ Subscription::create([
     'tier' => 'free', // or 'pro'
     'document_limit' => 10, // or null for pro
     'rewrite_limit_monthly' => 0, // or 50 for pro
+    'analysis_word_limit' => 800, // or null for pro
     'documents_used' => 0,
     'rewrites_used_this_month' => 0,
     'usage_reset_at' => now(), // Start of billing period
@@ -161,6 +168,7 @@ $subscription->update([
     'tier' => 'pro',
     'document_limit' => null, // Unlimited
     'rewrite_limit_monthly' => 50,
+    'analysis_word_limit' => null, // Unlimited
     // Keep existing usage counts
 ]);
 ```
@@ -172,6 +180,7 @@ $subscription->update([
     'tier' => 'free',
     'document_limit' => 10,
     'rewrite_limit_monthly' => 0,
+    'analysis_word_limit' => 800,
     // Keep existing usage counts
     // User may be over limit until next reset
 ]);

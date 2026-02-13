@@ -287,6 +287,7 @@ CREATE TABLE subscriptions (
     -- Usage limits based on tier
     document_limit INT NULL,           -- NULL = unlimited
     rewrite_limit_monthly INT NOT NULL DEFAULT 0,
+    analysis_word_limit INT NULL,      -- NULL = unlimited (Pro), 800 for free
     
     -- Current usage (resets monthly)
     documents_used INT NOT NULL DEFAULT 0,
@@ -312,6 +313,7 @@ CREATE INDEX idx_subscriptions_usage_reset_at ON subscriptions(usage_reset_at);
 - `tier`: 'free', 'pro'
 - `document_limit`: Maximum documents allowed (NULL for unlimited on Pro)
 - `rewrite_limit_monthly`: Monthly rewrite limit (0 for free, 50 for pro)
+- `analysis_word_limit`: Maximum words per analysis (800 for free, NULL for unlimited on Pro)
 - `documents_used`: Current document count (for free tier limit)
 - `rewrites_used_this_month`: Rewrites used in current billing period
 - `usage_reset_at`: Last time monthly counters were reset
@@ -371,3 +373,4 @@ CREATE INDEX idx_usage_logs_created_at ON usage_logs(created_at DESC);
 7. `create_subscriptions_table`
 8. `create_usage_logs_table`
 9. `add_tier_to_users_table`
+10. `add_analysis_word_limit_to_subscriptions_table`
