@@ -87,7 +87,43 @@
                         </div>
                     </div>
 
-                    <x-marketing.analysis-preview />
+                    @php
+                        use App\DataTransferObjects\DetectionResult;
+                        
+                        $mockResult = new DetectionResult(
+                            aiConfidence: 72.5,
+                            perplexityScore: 45.2,
+                            burstinessScore: 0.15,
+                            diversityScore: 0.42,
+                            criticalSections: [
+                                [
+                                    'start' => 0,
+                                    'end' => 95,
+                                    'confidence' => 85.0,
+                                    'reason' => 'Contains AI phrase: "in today\'s digital landscape" • GPT pattern: \'in today\'s digital landscape\' • Low vocabulary diversity (38%)',
+                                    'text' => 'In today\'s digital landscape, it\'s important to note that AI is transforming everything.',
+                                ],
+                                [
+                                    'start' => 96,
+                                    'end' => 165,
+                                    'confidence' => 78.0,
+                                    'reason' => 'Contains AI phrase: "furthermore", "delve into" • Predictable word choice with consistent rhythm',
+                                    'text' => 'Furthermore, we must delve into these patterns to understand the implications.',
+                                ],
+                                [
+                                    'start' => 166,
+                                    'end' => 245,
+                                    'confidence' => 65.0,
+                                    'reason' => 'Claude pattern: \'i\'d be happy to\' • Low vocabulary diversity (35%)',
+                                    'text' => 'I\'d be happy to help explain how these systems work in this particular case.',
+                                ],
+                            ],
+                            likelyModel: 'GPT',
+                            modelConfidence: 68.5
+                        );
+                    @endphp
+                    
+                    <x-marketing.analysis-preview :result="$mockResult" />
 
                     <div class="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

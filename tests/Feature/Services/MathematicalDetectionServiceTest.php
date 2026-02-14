@@ -86,7 +86,7 @@ test('it detects Gemini-like text patterns', function () {
 });
 
 test('it detects Gemini-like text with structural patterns', function () {
-    $geminiSample = <<<TEXT
+    $geminiSample = <<<'TEXT'
 ### 🧠 The Context Window: Your AI’s "Working Memory"
 
 Think of the context window as the desk space an AI has to work with.
@@ -114,6 +114,31 @@ TEXT;
     expect($result->modelConfidence)->toBeGreaterThan(60);
 });
 
+test('it detects Claude-like writerly text patterns', function () {
+    $claudeSample = <<<'TEXT'
+Let's talk about a common misconception in AI: bigger context windows = more hallucinations.
+
+Not true.
+
+Context windows are how much information an AI can "remember" during a conversation. GPT-4 started with 8K tokens, Claude now handles 200K+, and we're heading toward millions.
+
+The fear? More space = more room for the AI to make things up.
+
+The reality? The opposite is often true.
+
+Think of it like an open-book vs. closed-book exam. Students with access to materials are less likely to guess wrong than those working from memory alone.
+
+What's been your experience working with LLMs? Have you noticed patterns in when they're most reliable vs. when they start making things up?
+
+#ArtificialIntelligence #MachineLearning #AI #LLM
+TEXT;
+
+    $result = $this->service->analyze($claudeSample);
+
+    expect($result->likelyModel)->toBe('Claude');
+    expect($result->modelConfidence)->toBeGreaterThan(50);
+});
+
 test('it returns null model when confidence is too low', function () {
     $neutralText = 'The quick brown fox jumps over the lazy dog. This is a simple sentence without any AI-specific patterns or phrases. Just regular writing that could come from anyone. Nothing special or distinctive about the style used here at all.';
 
@@ -122,4 +147,3 @@ test('it returns null model when confidence is too low', function () {
     expect($result->likelyModel)->toBeNull();
     expect($result->modelConfidence)->toBeNull();
 });
-

@@ -20,15 +20,6 @@
             </span>
         </div>
         
-        @if ($result->likelyModel)
-            <div class="mt-3 flex items-center gap-2">
-                <span class="text-xs font-medium text-muted-foreground">Detected Model:</span>
-                <span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                    {{ $result->likelyModel }} ({{ $result->modelConfidence }}% confidence)
-                </span>
-            </div>
-        @endif
-        
         <div class="mt-4 text-left text-base leading-relaxed text-foreground">
             @php
                 $text = '';

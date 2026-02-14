@@ -56,6 +56,14 @@ class MathematicalDetectionService
         'it\'s worth noting',
         'to be clear',
         'in this case',
+        'let\'s talk about',
+        'common misconception',
+        'not true.',
+        'the reality?',
+        'the fear?',
+        'the challenge?',
+        'think of it like',
+        'what\'s been your experience',
     ];
 
     /**
@@ -121,6 +129,14 @@ class MathematicalDetectionService
         // Detect model family
         [$likelyModel, $modelConfidence] = $this->detectModelFamily($text);
 
+        // If we detected a specific model with high confidence, boost AI confidence
+        // This handles cases where sophisticated AI writing has human-like metrics
+        if ($likelyModel !== null && $modelConfidence >= 60) {
+            // Add up to 40 points based on model confidence
+            $modelBoost = ($modelConfidence / 100) * 40;
+            $aiConfidence = min(100, $aiConfidence + $modelBoost);
+        }
+
         return new DetectionResult(
             aiConfidence: round($aiConfidence, 2),
             perplexityScore: round($perplexity, 2),
@@ -143,6 +159,10 @@ class MathematicalDetectionService
         // Additional structural scoring for Gemini
         $geminiStructuralScore = $this->calculateGeminiStructuralScore($text);
         $geminiScore = min(100, $geminiScore + $geminiStructuralScore);
+
+        // Additional structural scoring for Claude
+        $claudeStructuralScore = $this->calculateClaudeStructuralScore($text);
+        $claudeScore = min(100, $claudeScore + $claudeStructuralScore);
 
         $scores = [
             'GPT' => $gptScore,
@@ -208,6 +228,33 @@ class MathematicalDetectionService
 
         // Return percentage of fingerprints found
         return ($found / $totalPhrases) * 100;
+    }
+
+    protected function calculateClaudeStructuralScore(string $text): float
+    {
+        $score = 0;
+
+        // Rhetorical pattern detection (Q? followed by A.)
+        if (preg_match('/(The fear\?|The reality\?|The challenge\?|The catch\?)\s+[A-Z]/i', $text)) {
+            $score += 20;
+        }
+
+        // Standalone short emphasis sentences
+        if (preg_match('/(?:\n|\.)\s*(Not true\.|Precisely\.|Exactly\.|Indeed\.)\s*(?:\n|\.|$)/i', $text)) {
+            $score += 15;
+        }
+
+        // Analogy style "Think of it like [X] vs [Y]"
+        if (stripos($text, 'think of it like') !== false && stripos($text, ' vs ') !== false) {
+            $score += 15;
+        }
+
+        // Engagement pattern at the end
+        if (preg_match('/(What\'s been your experience|Have you noticed patterns)\s*/i', $text)) {
+            $score += 10;
+        }
+
+        return $score;
     }
 
     protected function tokenize(string $text): array
@@ -408,13 +455,66 @@ class MathematicalDetectionService
 
     protected function getSentenceReason(float $score, string $sentence): string
     {
-        if ($score > 85) {
-            return 'Highly repetitive structure and common AI patterns.';
-        }
-        if ($score > 70) {
-            return 'Predictable word choice and low vocabulary variance.';
+        $sentenceLower = strtolower($sentence);
+        $reasons = [];
+
+        // Check for specific AI phrases
+        $foundPhrases = [];
+        foreach ($this->aiPhrases as $phrase) {
+            if (str_contains($sentenceLower, $phrase)) {
+                $foundPhrases[] = $phrase;
+            }
         }
 
-        return 'Consistent rhythm often found in AI-generated responses.';
+        // Check for model-specific fingerprints
+        $modelPatterns = [];
+        foreach ($this->gptFingerprints as $phrase) {
+            if (str_contains($sentenceLower, $phrase)) {
+                $modelPatterns[] = "GPT pattern: '{$phrase}'";
+            }
+        }
+        foreach ($this->claudeFingerprints as $phrase) {
+            if (str_contains($sentenceLower, $phrase)) {
+                $modelPatterns[] = "Claude pattern: '{$phrase}'";
+            }
+        }
+        foreach ($this->geminiFingerprints as $phrase) {
+            if (str_contains($sentenceLower, $phrase)) {
+                $modelPatterns[] = "Gemini pattern: '{$phrase}'";
+            }
+        }
+
+        // Build specific reason based on what was detected
+        if (! empty($foundPhrases)) {
+            $reasons[] = 'Contains AI phrase: "'.implode('", "', array_slice($foundPhrases, 0, 2)).'"';
+        }
+
+        if (! empty($modelPatterns)) {
+            $reasons[] = implode(', ', array_slice($modelPatterns, 0, 1));
+        }
+
+        // Add structural analysis
+        $words = $this->tokenize($sentence);
+        $diversity = $this->calculateDiversity($words);
+
+        if ($diversity < 0.4) {
+            $reasons[] = 'Low vocabulary diversity ('.round($diversity * 100).'%)';
+        }
+
+        if ($score > 85) {
+            if (empty($reasons)) {
+                $reasons[] = 'Highly repetitive structure and predictable patterns';
+            }
+        } elseif ($score > 70) {
+            if (empty($reasons)) {
+                $reasons[] = 'Predictable word choice with consistent rhythm';
+            }
+        } else {
+            if (empty($reasons)) {
+                $reasons[] = 'Consistent sentence structure typical of AI';
+            }
+        }
+
+        return implode(' • ', $reasons);
     }
 }
