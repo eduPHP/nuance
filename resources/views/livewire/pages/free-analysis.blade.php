@@ -34,8 +34,28 @@ $steps = [
                     <div class="rounded-2xl border border-border/60 bg-card shadow-sm">
                         <div class="flex items-center justify-between border-b border-border/50 px-5 py-3">
                             <h2 class="text-sm font-semibold text-foreground">Input Text</h2>
-                            <div class="flex items-center gap-2">
-                                <button type="button" @click="navigator.clipboard.readText().then(text => $wire.set('text', text))" class="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+                            <div class="flex items-center gap-2" x-data="{ 
+                                    async paste() {
+                                        if (!navigator.clipboard) {
+                                            console.warn('Clipboard API not available');
+                                            return;
+                                        }
+
+                                        try {
+                                            const text = await navigator.clipboard.readText();
+                                            if (text) {
+                                                $wire.set('text', text);
+                                                // Focus the textarea after pasting
+                                                this.$nextTick(() => {
+                                                    this.$root.parentElement.parentElement.querySelector('textarea').focus();
+                                                });
+                                            }
+                                        } catch (err) {
+                                            console.error('Failed to read clipboard: ', err);
+                                        }
+                                    }
+                                }">
+                                <button type="button" @click="paste" class="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
                                     Paste
                                 </button>
                                 <button type="button" wire:click="clear" class="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
@@ -73,7 +93,35 @@ $steps = [
 
                         <details class="border-t border-border/50 px-5 py-4">
                             <summary class="cursor-pointer text-xs font-medium text-primary">Writing samples (optional)</summary>
-                            <label class="mt-3 block text-xs text-muted-foreground">Add samples of your normal writing voice to get better rewrite suggestions.</label>
+                            <div class="mt-3 flex items-center justify-between">
+                                <label class="text-xs text-muted-foreground">Add samples of your normal writing voice to get better rewrite suggestions.</label>
+                                <button type="button" 
+                                    x-data="{ 
+                                        async paste() {
+                                            if (!navigator.clipboard) {
+                                                console.warn('Clipboard API not available');
+                                                return;
+                                            }
+
+                                            try {
+                                                const text = await navigator.clipboard.readText();
+                                                if (text) {
+                                                    $wire.set('samples', text);
+                                                    // Focus the textarea after pasting
+                                                    this.$nextTick(() => {
+                                                        this.$root.parentElement.parentElement.parentElement.querySelector('textarea').focus();
+                                                    });
+                                                }
+                                            } catch (err) {
+                                                console.error('Failed to read clipboard: ', err);
+                                            }
+                                        }
+                                    }"
+                                    @click="paste"
+                                    class="rounded-lg bg-secondary/50 px-2 py-1 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+                                    Paste Sample
+                                </button>
+                            </div>
                             <textarea
                                 wire:model="samples"
                                 placeholder="Paste your writing samples here..."
