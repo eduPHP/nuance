@@ -14,6 +14,8 @@ export default defineConfig({
     ],
     server: {
         cors: true,
+        host: 'nuance.localhost',
+        protocol: 'wss',
         watch: {
             ignored: ['**/storage/framework/views/**'],
         },

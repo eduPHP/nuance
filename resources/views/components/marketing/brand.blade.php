@@ -12,7 +12,7 @@
         : 'text-xl';
 @endphp
 
-<a href="{{ route('home') }}" {{ $attributes->class('flex items-center gap-2') }}>
+<a href="{{ route('home') }}" wire:navigate {{ $attributes->class('flex items-center gap-2') }}>
     <span class="flex {{ $iconClasses }} items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">H</span>
     <span class="{{ $nameClasses }} font-bold tracking-tight text-foreground">Nuance</span>
 </a>

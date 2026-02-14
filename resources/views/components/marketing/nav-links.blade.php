@@ -5,6 +5,12 @@
 
 <div {{ $attributes->class('items-center gap-8') }}>
     @foreach ($links as $link)
-        <a href="{{ $link['href'] }}" class="{{ $itemClass }}">{{ $link['label'] }}</a>
+        @php
+            $shouldNavigate = ! str_starts_with($link['href'], '#')
+                && ! str_starts_with($link['href'], 'mailto:')
+                && ! str_starts_with($link['href'], 'tel:');
+        @endphp
+
+        <a href="{{ $link['href'] }}" @if ($shouldNavigate) wire:navigate @endif class="{{ $itemClass }}">{{ $link['label'] }}</a>
     @endforeach
 </div>

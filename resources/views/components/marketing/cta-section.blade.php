@@ -12,11 +12,11 @@
                     Join thousands of writers, students, and professionals who trust Nuance to keep their content authentic.
                 </p>
                 @auth
-                    <a href="{{ route('dashboard') }}" class="mt-8 inline-block rounded-full bg-card px-8 py-3 text-base font-semibold text-foreground shadow-xl transition hover:bg-card/90">
+                    <a href="{{ route('dashboard') }}" wire:navigate class="mt-8 inline-block rounded-full bg-card px-8 py-3 text-base font-semibold text-foreground shadow-xl transition hover:bg-card/90">
                         Open Dashboard
                     </a>
                 @else
-                    <a href="{{ route('register') }}" class="mt-8 inline-block rounded-full bg-card px-8 py-3 text-base font-semibold text-foreground shadow-xl transition hover:bg-card/90">
+                    <a href="{{ route('register') }}" wire:navigate class="mt-8 inline-block rounded-full bg-card px-8 py-3 text-base font-semibold text-foreground shadow-xl transition hover:bg-card/90">
                         Try Nuance Free
                     </a>
                 @endauth

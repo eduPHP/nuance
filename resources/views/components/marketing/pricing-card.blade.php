@@ -16,11 +16,11 @@
     </div>
 
     @auth
-        <a href="{{ route('dashboard') }}" class="mt-6 block w-full rounded-full px-5 py-3 text-center text-sm font-semibold {{ $plan['featured'] ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 hover:bg-primary/90' : 'border border-border bg-card text-foreground hover:bg-secondary' }}">
+        <a href="{{ route('dashboard') }}" wire:navigate class="mt-6 block w-full rounded-full px-5 py-3 text-center text-sm font-semibold {{ $plan['featured'] ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 hover:bg-primary/90' : 'border border-border bg-card text-foreground hover:bg-secondary' }}">
             {{ $plan['featured'] ? 'Start Free Trial' : 'Get Started' }}
         </a>
     @else
-        <a href="{{ route('register') }}" class="mt-6 block w-full rounded-full px-5 py-3 text-center text-sm font-semibold {{ $plan['featured'] ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 hover:bg-primary/90' : 'border border-border bg-card text-foreground hover:bg-secondary' }}">
+        <a href="{{ route('register') }}" wire:navigate class="mt-6 block w-full rounded-full px-5 py-3 text-center text-sm font-semibold {{ $plan['featured'] ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 hover:bg-primary/90' : 'border border-border bg-card text-foreground hover:bg-secondary' }}">
             {{ $plan['featured'] ? 'Start Free Trial' : 'Get Started' }}
         </a>
     @endauth

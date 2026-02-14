@@ -1,12 +1,12 @@
 <?php
 
+use App\Livewire\Pages\FreeAnalysis;
+use App\Livewire\Pages\Home;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+Route::livewire('/', Home::class)->name('home');
 
-Route::view('free-analysis', 'free-analysis')->name('free-analysis');
+Route::livewire('free-analysis', FreeAnalysis::class)->name('free-analysis');
 
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
