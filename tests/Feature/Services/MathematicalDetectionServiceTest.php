@@ -85,6 +85,35 @@ test('it detects Gemini-like text patterns', function () {
     expect($result->modelConfidence)->toBeGreaterThan(30);
 });
 
+test('it detects Gemini-like text with structural patterns', function () {
+    $geminiSample = <<<TEXT
+### 🧠 The Context Window: Your AI’s "Working Memory"
+
+Think of the context window as the desk space an AI has to work with.
+
+* **Small window:** The AI can only look at a few pages of a book at a time.
+* **Large window:** The AI can "read" entire libraries, thousands of lines of code, or massive legal documents in one go.
+
+### ⚠️ The "Lost in the Middle" Phenomenon
+
+As context windows grow (reaching 1M+ tokens), a specific type of hallucination occurs. Research shows that models are great at recalling information at the very beginning or the very end of a prompt, but they often "forget" or distort details buried in the middle.
+
+### 🛠️ How to Minimize Hallucinations in Large Contexts
+
+If you are building with LLMs, don't just rely on a massive window. Use these strategies:
+
+1. **Needle-in-a-Haystack Testing:** Periodically test if your model can actually retrieve specific facts from a massive prompt.
+2. **RAG (Retrieval-Augmented Generation):** Instead of shoving 100 documents into the context window, use RAG to find the *most relevant* snippets first. It’s cleaner and more accurate.
+
+#AI #MachineLearning #LLM
+TEXT;
+
+    $result = $this->service->analyze($geminiSample);
+
+    expect($result->likelyModel)->toBe('Gemini');
+    expect($result->modelConfidence)->toBeGreaterThan(60);
+});
+
 test('it returns null model when confidence is too low', function () {
     $neutralText = 'The quick brown fox jumps over the lazy dog. This is a simple sentence without any AI-specific patterns or phrases. Just regular writing that could come from anyone. Nothing special or distinctive about the style used here at all.';
 
@@ -93,3 +122,4 @@ test('it returns null model when confidence is too low', function () {
     expect($result->likelyModel)->toBeNull();
     expect($result->modelConfidence)->toBeNull();
 });
+

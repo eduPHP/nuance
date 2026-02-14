@@ -72,6 +72,15 @@ class MathematicalDetectionService
         'bottom line',
         'key takeaway',
         'to sum up',
+        'here is the breakdown',
+        'here\'s the breakdown',
+        'think of',
+        'the bottom line',
+        'how are you',
+        'are you team',
+        'would you like me to',
+        'keep in mind',
+        'here\'s what you need to know',
     ];
 
     public function analyze(string $text): DetectionResult
@@ -131,6 +140,10 @@ class MathematicalDetectionService
         $claudeScore = $this->calculateModelScore($textLower, $this->claudeFingerprints);
         $geminiScore = $this->calculateModelScore($textLower, $this->geminiFingerprints);
 
+        // Additional structural scoring for Gemini
+        $geminiStructuralScore = $this->calculateGeminiStructuralScore($text);
+        $geminiScore = min(100, $geminiScore + $geminiStructuralScore);
+
         $scores = [
             'GPT' => $gptScore,
             'Claude' => $claudeScore,
@@ -147,6 +160,39 @@ class MathematicalDetectionService
         $likelyModel = array_search($maxScore, $scores);
 
         return [$likelyModel, $maxScore];
+    }
+
+    protected function calculateGeminiStructuralScore(string $text): float
+    {
+        $score = 0;
+
+        // Emoji usage detection (common in Gemini headers and emphasis)
+        // Regex for common emojis used by Gemini
+        if (preg_match('/[🧠⚠️🛠️👇🚀💡✨]/u', $text)) {
+            $score += 15;
+        }
+
+        // Hashtag patterns at the end (common in social-style posts)
+        if (preg_match('/(#[a-zA-Z0-9]+\s*){2,}$/', trim($text))) {
+            $score += 10;
+        }
+
+        // Section headers with emoji prefixes
+        if (preg_match('/###\s+[🧠⚠️🛠️🚀💡✨]/u', $text)) {
+            $score += 15;
+        }
+
+        // Numbered lists with bold labels and colons
+        if (preg_match('/\d\.\s+\*\*[^*]+:\*\*/', $text)) {
+            $score += 15;
+        }
+
+        // Specific analogy pattern "Think of [X] as"
+        if (stripos($text, 'think of') !== false && stripos($text, ' as ') !== false) {
+            $score += 10;
+        }
+
+        return $score;
     }
 
     protected function calculateModelScore(string $text, array $fingerprints): float
