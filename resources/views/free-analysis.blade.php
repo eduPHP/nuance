@@ -65,78 +65,9 @@
                     </div>
                 </div>
 
-                <div class="mx-auto mt-8 max-w-5xl space-y-6">
-                    <div class="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-                        <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                            <div class="flex items-center gap-4">
-                                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-xl font-semibold text-accent-foreground">
-                                    ✓
-                                </div>
-                                <div>
-                                    <p class="text-lg font-bold text-foreground">Likely Human-Written</p>
-                                    <p class="text-sm text-muted-foreground">Overall AI probability: 34%</p>
-                                </div>
-                            </div>
+                {{-- Results will be displayed here after analysis --}}
 
-                            <div class="flex items-center gap-4">
-                                <div class="h-3 w-48 overflow-hidden rounded-full bg-secondary">
-                                    <div class="h-full rounded-full bg-primary" style="width: 34%;"></div>
-                                </div>
-                                <span class="font-mono text-2xl font-bold text-foreground">34%</span>
-                            </div>
-                        </div>
-                    </div>
 
-                    @php
-                        use App\DataTransferObjects\DetectionResult;
-                        
-                        $mockResult = new DetectionResult(
-                            aiConfidence: 72.5,
-                            perplexityScore: 45.2,
-                            burstinessScore: 0.15,
-                            diversityScore: 0.42,
-                            criticalSections: [
-                                [
-                                    'start' => 0,
-                                    'end' => 95,
-                                    'confidence' => 85.0,
-                                    'reason' => 'Contains AI phrase: "in today\'s digital landscape" • GPT pattern: \'in today\'s digital landscape\' • Low vocabulary diversity (38%)',
-                                    'text' => 'In today\'s digital landscape, it\'s important to note that AI is transforming everything.',
-                                ],
-                                [
-                                    'start' => 96,
-                                    'end' => 165,
-                                    'confidence' => 78.0,
-                                    'reason' => 'Contains AI phrase: "furthermore", "delve into" • Predictable word choice with consistent rhythm',
-                                    'text' => 'Furthermore, we must delve into these patterns to understand the implications.',
-                                ],
-                                [
-                                    'start' => 166,
-                                    'end' => 245,
-                                    'confidence' => 65.0,
-                                    'reason' => 'Claude pattern: \'i\'d be happy to\' • Low vocabulary diversity (35%)',
-                                    'text' => 'I\'d be happy to help explain how these systems work in this particular case.',
-                                ],
-                            ],
-                            likelyModel: 'GPT',
-                            modelConfidence: 68.5
-                        );
-                    @endphp
-                    
-                    <x-marketing.analysis-preview :result="$mockResult" />
-
-                    <div class="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-                        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <h3 class="text-sm font-semibold text-foreground">Smart Rewrite</h3>
-                                <p class="mt-1 text-xs text-muted-foreground">Rewrite flagged passages to sound more natural.</p>
-                            </div>
-                            <button type="button" class="rounded-full border border-primary/30 px-5 py-2 text-sm font-medium text-primary transition hover:bg-accent hover:text-accent-foreground">
-                                Rewrite Now
-                            </button>
-                        </div>
-                    </div>
-                </div>
             </div>
         </section>
 
