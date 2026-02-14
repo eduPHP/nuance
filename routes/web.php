@@ -6,6 +6,8 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
+Route::view('free-analysis', 'free-analysis')->name('free-analysis');
+
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');

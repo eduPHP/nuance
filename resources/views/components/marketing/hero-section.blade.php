@@ -22,15 +22,9 @@
             </p>
 
             <div class="mt-10 flex flex-col items-center gap-4 sm:flex-row">
-                @auth
-                    <a href="{{ route('dashboard') }}" class="rounded-full bg-primary px-8 py-3 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30">
-                        Analyze Your Text
-                    </a>
-                @else
-                    <a href="{{ route('register') }}" class="rounded-full bg-primary px-8 py-3 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30">
-                        Analyze Your Text
-                    </a>
-                @endauth
+                <a href="{{ route('free-analysis') }}" class="rounded-full bg-primary px-8 py-3 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30">
+                    Analyze Your Text
+                </a>
                 <a href="#how-it-works" class="rounded-full border border-border bg-card px-8 py-3 text-base font-semibold text-foreground transition hover:bg-secondary">
                     See How It Works
                 </a>

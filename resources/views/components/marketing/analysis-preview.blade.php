@@ -3,7 +3,7 @@
         <div class="h-3 w-3 rounded-full bg-destructive/40"></div>
         <div class="h-3 w-3 rounded-full bg-primary/40"></div>
         <div class="h-3 w-3 rounded-full bg-muted-foreground/30"></div>
-        <span class="ml-3 text-xs text-muted-foreground">nuance.app/tool</span>
+        <span class="ml-3 text-xs text-muted-foreground">/analysis-tool</span>
     </div>
     <div class="p-6 md:p-8">
         <div class="flex items-center justify-between gap-3">
