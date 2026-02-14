@@ -36,71 +36,105 @@
                         <div class="flex items-center justify-between border-b border-border/50 px-5 py-3">
                             <h2 class="text-sm font-semibold text-foreground">Input Text</h2>
                             <div class="flex items-center gap-2">
-                                <button type="button" class="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+                                <button type="button" @click="navigator.clipboard.readText().then(text => $wire.set('text', text))" class="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
                                     Paste
                                 </button>
-                                <button type="button" class="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+                                <button type="button" wire:click="clear" class="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
                                     Clear
                                 </button>
                             </div>
                         </div>
 
-                        <textarea placeholder="Paste or type the text you want to analyze for AI-generated content..." class="min-h-55 w-full resize-none bg-transparent px-5 py-4 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/60 focus:outline-none md:text-base" aria-label="Text to analyze"></textarea>
+                        <textarea 
+                            wire:model.live.debounce.500ms="text"
+                            placeholder="Paste or type the text you want to analyze for AI-generated content..." 
+                            class="min-h-55 w-full resize-none bg-transparent px-5 py-4 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/60 focus:outline-none md:text-base @error('text') border-destructive/30 @enderror" 
+                            aria-label="Text to analyze"
+                        ></textarea>
+
+                        @error('text')
+                            <div class="px-5 pb-3 text-xs text-destructive">
+                                {{ $message }}
+                            </div>
+                        @enderror
 
                         <div class="flex flex-col gap-3 border-t border-border/50 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
                             <div class="flex items-center gap-4">
-                                <span class="text-xs text-muted-foreground">0 words</span>
+                                <span class="text-xs text-muted-foreground">{{ $this->wordCount }} words</span>
                             </div>
 
-                            <button type="button" class="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition hover:bg-primary/90">
-                                Analyze Text
+                            <button 
+                                type="button" 
+                                wire:click="analyze"
+                                wire:loading.attr="disabled"
+                                class="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition hover:bg-primary/90 disabled:opacity-50"
+                            >
+                                <span wire:loading.remove wire:target="analyze">Analyze Text</span>
+                                <span wire:loading wire:target="analyze">Analyzing...</span>
                             </button>
                         </div>
 
                         <details class="border-t border-border/50 px-5 py-4">
                             <summary class="cursor-pointer text-xs font-medium text-primary">Writing samples (optional)</summary>
                             <label class="mt-3 block text-xs text-muted-foreground">Add samples of your normal writing voice to get better rewrite suggestions.</label>
-                            <textarea placeholder="Paste your writing samples here..." class="mt-2 min-h-27.5 w-full resize-none rounded-xl border border-border/60 bg-background p-3 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/60 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20" aria-label="Your writing samples"></textarea>
+                            <textarea 
+                                wire:model="samples"
+                                placeholder="Paste your writing samples here..." 
+                                class="mt-2 min-h-27.5 w-full resize-none rounded-xl border border-border/60 bg-background p-3 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/60 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20" 
+                                aria-label="Your writing samples"
+                            ></textarea>
                         </details>
                     </div>
                 </div>
 
-                <div class="mx-auto mt-8 max-w-5xl space-y-6">
-                    <div class="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-                        <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                            <div class="flex items-center gap-4">
-                                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-xl font-semibold text-accent-foreground">
-                                    ✓
+                @if ($result)
+                    <div class="mx-auto mt-8 max-w-5xl space-y-6">
+                        <div class="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+                            <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div @class([
+                                        'flex h-14 w-14 items-center justify-center rounded-2xl text-xl font-semibold',
+                                        'bg-green-100 text-green-700' => $result->isLikelyHuman(),
+                                        'bg-yellow-100 text-yellow-700' => $result->isMixed(),
+                                        'bg-red-100 text-red-700' => $result->isLikelyAi(),
+                                    ])>
+                                        @if ($result->isLikelyHuman()) ✓ @else ! @endif
+                                    </div>
+                                    <div>
+                                        <p class="text-lg font-bold text-foreground">{{ $result->getLabel() }}</p>
+                                        <p class="text-sm text-muted-foreground">Overall AI probability: {{ $result->aiConfidence }}%</p>
+                                    </div>
                                 </div>
+
+                                <div class="flex items-center gap-4">
+                                    <div class="h-3 w-48 overflow-hidden rounded-full bg-secondary">
+                                        <div @class([
+                                            'h-full rounded-full transition-all duration-500',
+                                            'bg-green-500' => $result->isLikelyHuman(),
+                                            'bg-yellow-500' => $result->isMixed(),
+                                            'bg-red-500' => $result->isLikelyAi(),
+                                        ]) style="width: {{ $result->aiConfidence }}%;"></div>
+                                    </div>
+                                    <span class="font-mono text-2xl font-bold text-foreground">{{ $result->aiConfidence }}%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <x-marketing.analysis-preview :result="$result" />
+
+                        <div class="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+                            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
-                                    <p class="text-lg font-bold text-foreground">Likely Human-Written</p>
-                                    <p class="text-sm text-muted-foreground">Overall AI probability: 34%</p>
+                                    <h3 class="text-sm font-semibold text-foreground">Smart Rewrite</h3>
+                                    <p class="mt-1 text-xs text-muted-foreground">Rewrite flagged passages to sound more natural.</p>
                                 </div>
-                            </div>
-
-                            <div class="flex items-center gap-4">
-                                <div class="h-3 w-48 overflow-hidden rounded-full bg-secondary">
-                                    <div class="h-full rounded-full bg-primary" style="width: 34%;"></div>
-                                </div>
-                                <span class="font-mono text-2xl font-bold text-foreground">34%</span>
+                                <button type="button" class="rounded-full border border-primary/30 px-5 py-2 text-sm font-medium text-primary transition hover:bg-accent hover:text-accent-foreground">
+                                    Rewrite Now
+                                </button>
                             </div>
                         </div>
                     </div>
-
-                    <x-marketing.analysis-preview />
-
-                    <div class="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-                        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <h3 class="text-sm font-semibold text-foreground">Smart Rewrite</h3>
-                                <p class="mt-1 text-xs text-muted-foreground">Rewrite flagged passages to sound more natural.</p>
-                            </div>
-                            <button type="button" class="rounded-full border border-primary/30 px-5 py-2 text-sm font-medium text-primary transition hover:bg-accent hover:text-accent-foreground">
-                                Rewrite Now
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                @endif
             </div>
         </section>
 
