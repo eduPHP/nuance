@@ -17,6 +17,7 @@ readonly class DetectionResult implements Wireable
         public array $criticalSections = [],
         public ?string $likelyModel = null,
         public ?float $modelConfidence = null,
+        public string $originalText = '',
     ) {}
 
     public function isLikelyAi(): bool
@@ -57,6 +58,7 @@ readonly class DetectionResult implements Wireable
             'criticalSections' => $this->criticalSections,
             'likelyModel' => $this->likelyModel,
             'modelConfidence' => $this->modelConfidence,
+            'originalText' => $this->originalText,
         ];
     }
 
@@ -69,7 +71,8 @@ readonly class DetectionResult implements Wireable
             diversityScore: $value['diversityScore'],
             criticalSections: $value['criticalSections'],
             likelyModel: $value['likelyModel'] ?? null,
-            modelConfidence: $value['modelConfidence'] ?? null
+            modelConfidence: $value['modelConfidence'] ?? null,
+            originalText: $value['originalText'] ?? ''
         );
     }
 }

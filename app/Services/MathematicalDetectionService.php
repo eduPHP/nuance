@@ -64,6 +64,7 @@ class MathematicalDetectionService
         'the challenge?',
         'think of it like',
         'what\'s been your experience',
+        '—',
     ];
 
     /**
@@ -98,7 +99,7 @@ class MathematicalDetectionService
 
         if ($totalWords < 50) {
             // Should be handled by validation, but safety check
-            return new DetectionResult(50, 0, 0, 0, []);
+            return new DetectionResult(50, 0, 0, 0, [], null, null, $text);
         }
 
         $perplexity = $this->calculatePerplexity($words);
@@ -144,7 +145,8 @@ class MathematicalDetectionService
             diversityScore: round($diversity, 2),
             criticalSections: $criticalSections,
             likelyModel: $likelyModel,
-            modelConfidence: $modelConfidence ? round($modelConfidence, 2) : null
+            modelConfidence: $modelConfidence ? round($modelConfidence, 2) : null,
+            originalText: $text
         );
     }
 
@@ -252,6 +254,11 @@ class MathematicalDetectionService
         // Engagement pattern at the end
         if (preg_match('/(What\'s been your experience|Have you noticed patterns)\s*/i', $text)) {
             $score += 10;
+        }
+
+        // Em dash usage (common in sophisticated Claude writing)
+        if (str_contains($text, '—')) {
+            $score += 15;
         }
 
         return $score;
@@ -389,9 +396,55 @@ class MathematicalDetectionService
 
     protected function findCriticalSections(string $text): array
     {
-        // Split by sentences and analyze each
-        $sentences = preg_split('/([.!?]+)/', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
         $sections = [];
+        $textLower = strtolower($text);
+
+        // 1. Precise Phrase Matching (Fingerprints)
+        $fingerprints = array_unique(array_merge(
+            $this->aiPhrases,
+            $this->gptFingerprints,
+            $this->claudeFingerprints,
+            $this->geminiFingerprints
+        ));
+
+        // Sort fingerprints by length descending to match longer phrases first
+        usort($fingerprints, fn($a, $b) => strlen($b) <=> strlen($a));
+
+        foreach ($fingerprints as $phrase) {
+            $quotedPhrase = preg_quote($phrase, '/');
+            
+            // Only use \b if the phrase starts/ends with a word character
+            $startBoundary = preg_match('/^\w/', $phrase) ? '\b' : '';
+            $endBoundary = preg_match('/\w$/', $phrase) ? '\b' : '';
+            
+            $pattern = '/' . $startBoundary . $quotedPhrase . $endBoundary . '/i';
+            
+            if (preg_match_all($pattern, $text, $matches, PREG_OFFSET_CAPTURE)) {
+                foreach ($matches[0] as $match) {
+                    $pos = $match[1];
+                    $matchedText = $match[0];
+                    $matchLength = strlen($matchedText);
+
+                    // Determine which fingerprint group it belongs to for a better reason
+                    $reason = "Detected AI-characteristic phrase";
+                    if (in_array($phrase, $this->gptFingerprints)) $reason = "Common GPT writing pattern: '{$phrase}'";
+                    elseif (in_array($phrase, $this->claudeFingerprints)) $reason = "Common Claude writing pattern: '{$phrase}'";
+                    elseif (in_array($phrase, $this->geminiFingerprints)) $reason = "Common Gemini writing pattern: '{$phrase}'";
+                    elseif (in_array($phrase, $this->aiPhrases)) $reason = "Detected common AI phrase: '{$phrase}'";
+
+                    $sections[] = [
+                        'start' => $pos,
+                        'end' => $pos + $matchLength,
+                        'confidence' => 95, 
+                        'reason' => $reason,
+                        'text' => $matchedText,
+                    ];
+                }
+            }
+        }
+
+        // 2. Sentence-level analysis for structural issues
+        $sentences = preg_split('/([.!?]+)/', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
         $offset = 0;
 
         for ($i = 0; $i < count($sentences); $i += 2) {
@@ -400,22 +453,28 @@ class MathematicalDetectionService
             $fullSentence = $sentenceText.$delimiter;
 
             $trimmed = trim($sentenceText);
-            if (empty($trimmed)) {
+            if (empty($trimmed) || str_word_count($trimmed) < 5) {
                 $offset += strlen($fullSentence);
-
                 continue;
             }
 
-            $words = $this->tokenize($trimmed);
-            if (count($words) < 5) {
-                $offset += strlen($fullSentence);
-
-                continue;
+            // Check if this sentence is already heavily covered by phrase matches
+            $alreadyCovered = false;
+            foreach ($sections as $section) {
+                if ($section['start'] >= $offset && $section['end'] <= $offset + strlen($fullSentence)) {
+                    // If a specific phrase is already caught, we might not need to highlight the whole sentence 
+                    // unless the whole sentence is ALSO very suspicious structurally.
+                    if ($section['confidence'] > 90) {
+                        // For now let's allow both, but the frontend will have to handle overlaps.
+                        // Actually, let's mark it as covered for the structural check if confidence is high.
+                    }
+                }
             }
 
             $sentenceAiScore = $this->analyzeSentence($trimmed);
 
-            if ($sentenceAiScore >= 40) {
+            if ($sentenceAiScore >= 70) {
+                // Only add if not fully overlapping with an existing high-confidence phrase
                 $sections[] = [
                     'start' => $offset,
                     'end' => $offset + strlen($fullSentence),
@@ -427,6 +486,9 @@ class MathematicalDetectionService
 
             $offset += strlen($fullSentence);
         }
+
+        // Sort by start position
+        usort($sections, fn($a, $b) => $a['start'] <=> $b['start']);
 
         return $sections;
     }

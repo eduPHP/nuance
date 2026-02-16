@@ -51,28 +51,50 @@
                     criticalSections: [
                         [
                             'start' => 0,
-                            'end' => 95,
-                            'confidence' => 85.0,
-                            'reason' => 'Contains AI phrase: "in today\'s digital landscape" • GPT pattern: \'in today\'s digital landscape\' • Low vocabulary diversity (38%)',
-                            'text' => 'In today\'s digital landscape, it\'s important to note that AI is transforming everything.',
+                            'end' => 28,
+                            'confidence' => 95.0,
+                            'reason' => "Common GPT writing pattern: 'in today\'s digital landscape'",
+                            'text' => "In today's digital landscape",
                         ],
                         [
-                            'start' => 96,
-                            'end' => 165,
+                            'start' => 30,
+                            'end' => 52,
+                            'confidence' => 92.0,
+                            'reason' => "Detected common AI phrase: 'it\'s important to note'",
+                            'text' => "it's important to note",
+                        ],
+                        [
+                            'start' => 89,
+                            'end' => 100,
                             'confidence' => 78.0,
-                            'reason' => 'Contains AI phrase: "furthermore", "delve into" • Predictable word choice with consistent rhythm',
-                            'text' => 'Furthermore, we must delve into these patterns to understand the implications.',
+                            'reason' => "Detected common AI phrase: 'Furthermore'",
+                            'text' => "Furthermore",
                         ],
                         [
-                            'start' => 166,
-                            'end' => 245,
-                            'confidence' => 65.0,
-                            'reason' => 'Claude pattern: \'i\'d be happy to\' • Low vocabulary diversity (35%)',
-                            'text' => 'I\'d be happy to help explain how these systems work in this particular case.',
+                            'start' => 110,
+                            'end' => 120,
+                            'confidence' => 95.0,
+                            'reason' => "Detected common AI phrase: 'delve into'",
+                            'text' => "delve into",
+                        ],
+                        [
+                            'start' => 155,
+                            'end' => 156,
+                            'confidence' => 98.0,
+                            'reason' => "Advanced AI fingerprint (em-dash usage)",
+                            'text' => "—",
+                        ],
+                        [
+                            'start' => 191,
+                            'end' => 206,
+                            'confidence' => 82.0,
+                            'reason' => "Common Claude writing pattern: 'i\'d be happy to'",
+                            'text' => "I'd be happy to",
                         ],
                     ],
                     likelyModel: 'GPT',
-                    modelConfidence: 68.5
+                    modelConfidence: 68.5,
+                    originalText: "In today's digital landscape, it's important to note that AI is transforming everything. Furthermore, we must delve into these patterns to understand the implications — even when they seem clear. I'd be happy to help explain how these systems work in this particular case."
                 );
             @endphp
             

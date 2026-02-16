@@ -155,7 +155,8 @@ class MathematicalDetectionService implements DetectionServiceInterface
             perplexityScore: $perplexity,
             burstinessScore: $burstiness,
             diversityScore: $diversity,
-            criticalSections: $criticalSections
+            criticalSections: $criticalSections,
+            originalText: $text
         );
     }
 }
